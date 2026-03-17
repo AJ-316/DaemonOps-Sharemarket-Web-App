@@ -10,9 +10,6 @@ import wissen.daemonops.sharemarket.dtos.LoginRequest;
 import wissen.daemonops.sharemarket.dtos.LoginResponse;
 import wissen.daemonops.sharemarket.services.AuthService;
 
-
-
-
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
