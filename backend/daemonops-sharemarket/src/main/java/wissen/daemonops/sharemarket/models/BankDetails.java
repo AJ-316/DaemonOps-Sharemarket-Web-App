@@ -4,7 +4,9 @@ import jakarta.persistence.Entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Pattern;
+import lombok.Data;
 
+@Data
 @Entity
 public class BankDetails {
 	
