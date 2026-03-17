@@ -1,16 +1,18 @@
 import React from 'react'
 import Header from './components/Header'
-import Routing from './Routing'
 import Footer from './components/Footer'
+import AppRoutes from './AppRoutes'
 
 const App = () => {
   return (
-    <div>
-      <Header/>
-      <Routing/>
-      <Footer/>
+    <div className="flex flex-col min-h-screen">
+      <Header />
+      <main className="flex-1">
+        <AppRoutes />
+      </main>
+      <Footer />
     </div>
-  )
-}
+  );
+};
 
-export default App
+export default App;

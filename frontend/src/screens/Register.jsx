@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import axiosInstance from "../api/axiosInstance";
 
 const Register = () => {
   const navigate = useNavigate();
-  
+
   // ---------- State ----------
   const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
@@ -15,7 +16,7 @@ const Register = () => {
     pan: "",
     dob: "",
     aadhaar: "",
-    aadhaarName: "",
+    panName: "",
     ifsc: "",
     accountNumber: "",
     bankName: "",
@@ -34,6 +35,8 @@ const Register = () => {
 
   const [verified, setVerified] = useState({ email: false, aadhaar: false });
   const [passwordStrength, setPasswordStrength] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const updateForm = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -142,16 +145,52 @@ const Register = () => {
   };
   const prevStep = () => setStep((prev) => Math.max(prev - 1, 1));
 
-  const verifyEmail = () => setVerified((prev) => ({ ...prev, email: true }));
-  const verifyAadhaar = () => setVerified((prev) => ({ ...prev, aadhaar: true }));
+  // const verifyEmail = () => setVerified((prev) => ({ ...prev, email: true }));
+  // const verifyAadhaar = () => setVerified((prev) => ({ ...prev, aadhaar: true }));
 
   const handleFileChange = (e) => {
     updateForm("chequeFile", e.target.files[0] || null);
   };
 
-  const handleSubmit = () => {
-    console.log("Form Submitted:", formData);
-    navigate("/login");
+  const handleSubmit = async () => {
+    setSubmitError("");
+    setLoading(true);
+
+    try {
+      await axiosInstance.post("/auth/register", {
+        firstName: formData.firstName,
+        middleName: formData.middleName,
+        lastName: formData.lastName,
+        email: formData.email,
+        mobile: formData.mobile,
+        pan: formData.pan,
+        dob: formData.dob,
+        aadhaar: formData.aadhaar,
+        panName: formData.panName,
+
+        ifsc: formData.ifsc,
+        accountNumber: formData.accountNumber,
+        bankName: formData.bankName,
+        branchName: formData.branchName,
+
+        nomineeFirstName: formData.nomineeFirstName,
+        nomineeMiddleName: formData.nomineeMiddleName,
+        nomineeLastName: formData.nomineeLastName,
+        nomineeRelationship: formData.nomineeRelationship,
+        nomineeEmail: formData.nomineeEmail,
+        nomineePan: formData.nomineePan,
+        nomineeDob: formData.nomineeDob,
+
+        password: formData.password,
+      });
+
+      navigate("/login");
+    } catch (err) {
+      setSubmitError(err.response?.data?.message || "Registration failed. Please try again.");
+      console.log("err"+err)
+    } finally {
+      setLoading(false);
+    }
   };
 
   const stepNames = [
@@ -261,18 +300,17 @@ const Register = () => {
                   className={`${inputClass} flex-1`}
                   placeholder="john@example.com"
                 />
-                <button
+                {/* <button
                   type="button"
                   onClick={verifyEmail}
                   disabled={verified.email}
-                  className={`px-6 py-3 rounded-xl font-medium transition ${
-                    verified.email
+                  className={`px-6 py-3 rounded-xl font-medium transition ${verified.email
                       ? "bg-green-100 text-green-700 border border-green-300 cursor-not-allowed"
                       : "bg-[#10B981] hover:bg-[#059669] text-white"
-                  }`}
+                    }`}
                 >
-                  {verified.email ? "Verified ✓" : "Verify"}
-                </button>
+                  {verified.email ? "Verified" : "Verify"}
+                </button> */}
               </div>
               {getError("email") && <p className={errorClass}>{getError("email")}</p>}
             </div>
@@ -328,29 +366,28 @@ const Register = () => {
                   className={`${inputClass} flex-1`}
                   placeholder="1234 5678 9012"
                 />
-                <button
+                {/* <button
                   type="button"
                   onClick={verifyAadhaar}
                   disabled={verified.aadhaar}
-                  className={`px-6 py-3 rounded-xl font-medium transition ${
-                    verified.aadhaar
+                  className={`px-6 py-3 rounded-xl font-medium transition ${verified.aadhaar
                       ? "bg-green-100 text-green-700 border border-green-300 cursor-not-allowed"
                       : "bg-[#10B981] hover:bg-[#059669] text-white"
-                  }`}
+                    }`}
                 >
-                  {verified.aadhaar ? "Verified ✓" : "Verify"}
-                </button>
+                  {verified.aadhaar ? "Verified" : "Verify"}
+                </button> */}
               </div>
               {getError("aadhaar") && <p className={errorClass}>{getError("aadhaar")}</p>}
             </div>
             <div>
-              <label className={labelClass}>Name as per Aadhaar</label>
+              <label className={labelClass}>Name as on PAN</label>
               <input
                 type="text"
                 value={formData.aadhaarName}
-                onChange={(e) => updateForm("aadhaarName", e.target.value)}
+                onChange={(e) => updateForm("panName", e.target.value)}
                 className={inputClass}
-                placeholder="Enter name as on Aadhaar"
+                placeholder="Enter name as on PAN"
               />
             </div>
           </div>
@@ -504,6 +541,48 @@ const Register = () => {
           </div>
         );
       case 6:
+        // return (
+        //   <div className="space-y-6">
+        //     <div>
+        //       <label className={labelClass}>Password *</label>
+        //       <input
+        //         type="password"
+        //         value={formData.password}
+        //         onChange={(e) => updateForm("password", e.target.value)}
+        //         className={inputClass}
+        //         placeholder="Enter strong password"
+        //       />
+        //       {formData.password && (
+        //         <div className="mt-2">
+        //           <div className="flex items-center gap-2">
+        //             <div className="flex-1 h-2 bg-gray-200 rounded-full">
+        //               <div
+        //                 className={`h-2 rounded-full ${getStrengthColor()}`}
+        //                 style={{ width: `${(passwordStrength / 5) * 100}%` }}
+        //               ></div>
+        //             </div>
+        //             <span className="text-xs font-medium text-gray-600">
+        //               {getStrengthLabel()}
+        //             </span>
+        //           </div>
+        //         </div>
+        //       )}
+        //       {getError("password") && <p className={errorClass}>{getError("password")}</p>}
+        //     </div>
+        //     <div>
+        //       <label className={labelClass}>Confirm Password *</label>
+        //       <input
+        //         type="password"
+        //         value={formData.confirmPassword}
+        //         onChange={(e) => updateForm("confirmPassword", e.target.value)}
+        //         className={inputClass}
+        //         placeholder="Re-enter password"
+        //       />
+        //       {getError("confirmPassword") && <p className={errorClass}>{getError("confirmPassword")}</p>}
+        //     </div>
+        //   </div>
+        // );
+
         return (
           <div className="space-y-6">
             <div>
@@ -515,23 +594,55 @@ const Register = () => {
                 className={inputClass}
                 placeholder="Enter strong password"
               />
+
               {formData.password && (
-                <div className="mt-2">
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 h-2 bg-gray-200 rounded-full">
+                <div className="mt-3 space-y-2">
+                  {/* Segmented bar */}
+                  {/* <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((seg) => (
                       <div
-                        className={`h-2 rounded-full ${getStrengthColor()}`}
-                        style={{ width: `${(passwordStrength / 5) * 100}%` }}
-                      ></div>
-                    </div>
-                    <span className="text-xs font-medium text-gray-600">
-                      {getStrengthLabel()}
-                    </span>
+                        key={seg}
+                        className={`h-1 flex-1 rounded-full transition-all duration-300 ${seg <= passwordStrength
+                            ? passwordStrength <= 1 ? "bg-red-400"
+                              : passwordStrength <= 2 ? "bg-orange-400"
+                                : passwordStrength <= 3 ? "bg-yellow-400"
+                                  : passwordStrength <= 4 ? "bg-blue-400"
+                                    : "bg-emerald-500"
+                            : "bg-gray-100"
+                          }`}
+                      />
+                    ))}
+                  </div> */}
+
+                  {/* Checklist */}
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 pt-1">
+                    {[
+                      { label: "8+ characters", pass: formData.password.length >= 8 },
+                      { label: "Uppercase letter", pass: /[A-Z]/.test(formData.password) },
+                      { label: "Lowercase letter", pass: /[a-z]/.test(formData.password) },
+                      { label: "Number", pass: /[0-9]/.test(formData.password) },
+                      { label: "Special character", pass: /[^a-zA-Z0-9]/.test(formData.password) },
+                    ].map(({ label, pass }) => (
+                      <span key={label} className={`flex items-center gap-1.5 text-xs transition-colors ${pass ? "text-emerald-600" : "text-gray-400"
+                        }`}>
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                          {pass ? (
+                            <path d="M2 6l3 3 5-5" stroke="#10b981" strokeWidth="1.5"
+                              strokeLinecap="round" strokeLinejoin="round" />
+                          ) : (
+                            <circle cx="6" cy="6" r="4" stroke="#d1d5db" strokeWidth="1.2" />
+                          )}
+                        </svg>
+                        {label}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}
+
               {getError("password") && <p className={errorClass}>{getError("password")}</p>}
             </div>
+
             <div>
               <label className={labelClass}>Confirm Password *</label>
               <input
@@ -541,89 +652,206 @@ const Register = () => {
                 className={inputClass}
                 placeholder="Re-enter password"
               />
+              {/* {formData.confirmPassword && (
+                <p className={`text-xs mt-1.5 flex items-center gap-1 ${formData.password === formData.confirmPassword ? "text-emerald-600" : "text-red-400"
+                  }`}>
+                  {formData.password === formData.confirmPassword ? "Passwords match" : "Passwords do not match"}
+                </p>
+              )} */}
               {getError("confirmPassword") && <p className={errorClass}>{getError("confirmPassword")}</p>}
             </div>
           </div>
         );
+
       default:
         return null;
     }
   };
 
+  // return (
+  //   <div className="min-h-screen bg-[#ECFDF5] flex items-center justify-center p-4">
+  //     <style>{`
+  //       @keyframes fadeIn {
+  //         from { opacity: 0; transform: translateY(10px); }
+  //         to { opacity: 1; transform: translateY(0); }
+  //       }
+  //       .fade-step {
+  //         animation: fadeIn 0.3s ease-out;
+  //       }
+  //     `}</style>
+  //     <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-8 border border-[#A7F3D0]">
+  //       <div className="mb-8">
+  //         <div className="flex justify-between items-center mb-2">
+  //           <h2 className="text-2xl font-semibold text-gray-800">
+  //             Step {step} of 6: {stepNames[step - 1]}
+  //           </h2>
+  //           <span className="text-sm font-medium text-[#10B981] bg-[#ECFDF5] px-4 py-2 rounded-full">
+  //             {step}/6
+  //           </span>
+  //         </div>
+  //         <div className="w-full bg-gray-200 rounded-full h-2.5">
+  //           <div
+  //             className="bg-[#10B981] h-2.5 rounded-full transition-all duration-300"
+  //             style={{ width: `${(step / 6) * 100}%` }}
+  //           ></div>
+  //         </div>
+  //         <div className="flex justify-between mt-3 text-xs text-gray-500">
+  //           {[1, 2, 3, 4, 5, 6].map((num) => (
+  //             <span
+  //               key={num}
+  //               className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition ${
+  //                 num === step
+  //                   ? "border-[#10B981] bg-[#ECFDF5] text-[#10B981] font-bold"
+  //                   : "border-gray-300 text-gray-400"
+  //               }`}
+  //             >
+  //               {num}
+  //             </span>
+  //           ))}
+  //         </div>
+  //       </div>
+  //       <div key={step} className="fade-step">
+  //         {renderStep()}
+  //       </div>
+  //       <div className="flex justify-between mt-10">
+  //         <button
+  //           type="button"
+  //           onClick={prevStep}
+  //           disabled={step === 1}
+  //           className={`px-8 py-3 rounded-xl font-medium transition ${
+  //             step === 1
+  //               ? "bg-gray-100 text-gray-400 cursor-not-allowed"
+  //               : "bg-[#ECFDF5] text-[#10B981] border border-[#10B981] hover:bg-[#D1FAE5]"
+  //           }`}
+  //         >
+  //           ← Previous
+  //         </button>
+  //         <button
+  //           type="button"
+  //           onClick={step === 6 ? handleSubmit : nextStep}
+  //           disabled={!isStepValid()}
+  //           className={`px-8 py-3 rounded-xl font-medium transition ${
+  //             isStepValid()
+  //               ? "bg-[#10B981] hover:bg-[#059669] text-white"
+  //               : "bg-gray-100 text-gray-400 cursor-not-allowed"
+  //           }`}
+  //         >
+  //           {step === 6 ? "Submit" : "Next →"}
+  //         </button>
+  //       </div>
+  //     </div>
+  //   </div>
+  // );
+
+  // Replace the return block's outer wrapper + stepper with:
+
   return (
-    <div className="min-h-screen bg-[#ECFDF5] flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#ECFDF5] via-white to-[#D1FAE5] flex items-center justify-center p-4 py-10">
       <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .fade-step {
-          animation: fadeIn 0.3s ease-out;
-        }
-      `}</style>
-      <div className="w-full max-w-3xl bg-white rounded-2xl shadow-xl p-8 border border-[#A7F3D0]">
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-2xl font-semibold text-gray-800">
-              Step {step} of 6: {stepNames[step - 1]}
-            </h2>
-            <span className="text-sm font-medium text-[#10B981] bg-[#ECFDF5] px-4 py-2 rounded-full">
-              {step}/6
-            </span>
+      @keyframes fadeSlide {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .fade-step { animation: fadeSlide 0.25s ease-out; }
+    `}</style>
+
+      <div className="w-full max-w-2xl">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#10B981] shadow-lg shadow-emerald-200 mb-4">
+            <svg className="w-7 h-7 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            </svg>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              className="bg-[#10B981] h-2.5 rounded-full transition-all duration-300"
-              style={{ width: `${(step / 6) * 100}%` }}
-            ></div>
+          <h1 className="text-2xl font-bold text-gray-900">Create your account</h1>
+          <p className="text-sm text-gray-500 mt-1">{stepNames[step - 1]} - Step {step} of 6</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
+          {/* Progress */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-3">
+              {stepNames.map((name, i) => {
+                const num = i + 1;
+                return (
+                  <div key={num} className="flex flex-col items-center gap-1">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold border-2 transition-all duration-300 ${num < step ? "bg-[#10B981] border-[#10B981] text-white"
+                      : num === step ? "border-[#10B981] text-[#10B981] bg-emerald-50"
+                        : "border-gray-200 text-gray-400 bg-white"
+                      }`}>
+                      {num < step ? (
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : num}
+                    </div>
+                    <span className={`hidden sm:block text-[10px] font-medium ${num === step ? "text-[#10B981]" : "text-gray-400"}`}>
+                      {name.split(" ")[0]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {/* Connecting line */}
+            <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1">
+              <div
+                className="bg-[#10B981] h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${((step - 1) / 5) * 100}%` }}
+              />
+            </div>
           </div>
-          <div className="flex justify-between mt-3 text-xs text-gray-500">
-            {[1, 2, 3, 4, 5, 6].map((num) => (
-              <span
-                key={num}
-                className={`w-8 h-8 flex items-center justify-center rounded-full border-2 transition ${
-                  num === step
-                    ? "border-[#10B981] bg-[#ECFDF5] text-[#10B981] font-bold"
-                    : "border-gray-300 text-gray-400"
+
+          {/* Form body */}
+          <div key={step} className="fade-step">
+            {renderStep()}
+          </div>
+
+          {/* Navigation */}
+          <div className="flex justify-between mt-10 pt-6 border-t border-gray-100">
+            {submitError && (
+              <p className="text-sm text-red-500 text-center w-full mb-4">{submitError}</p>
+            )}
+            <button
+              type="button"
+              onClick={prevStep}
+              disabled={step === 1}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all ${step === 1
+                ? "text-gray-300 cursor-not-allowed"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
                 }`}
-              >
-                {num}
-              </span>
-            ))}
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={step === 6 ? handleSubmit : nextStep}
+              disabled={!isStepValid()}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${isStepValid()
+                ? "bg-[#10B981] hover:bg-[#059669] text-white shadow-sm shadow-emerald-200 hover:shadow-md active:scale-[0.98]"
+                : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                }`}
+            >
+              {step === 6 ? "Submit" : "Continue"}
+              {step < 6 && (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
-        <div key={step} className="fade-step">
-          {renderStep()}
-        </div>
-        <div className="flex justify-between mt-10">
-          <button
-            type="button"
-            onClick={prevStep}
-            disabled={step === 1}
-            className={`px-8 py-3 rounded-xl font-medium transition ${
-              step === 1
-                ? "bg-gray-100 text-gray-400 cursor-not-allowed"
-                : "bg-[#ECFDF5] text-[#10B981] border border-[#10B981] hover:bg-[#D1FAE5]"
-            }`}
-          >
-            ← Previous
-          </button>
-          <button
-            type="button"
-            onClick={step === 6 ? handleSubmit : nextStep}
-            disabled={!isStepValid()}
-            className={`px-8 py-3 rounded-xl font-medium transition ${
-              isStepValid()
-                ? "bg-[#10B981] hover:bg-[#059669] text-white"
-                : "bg-gray-100 text-gray-400 cursor-not-allowed"
-            }`}
-          >
-            {step === 6 ? "Submit" : "Next →"}
-          </button>
-        </div>
+
+        <p className="text-center text-sm text-gray-500 mt-6">
+          Already have an account?{" "}
+          <Link to="/login" className="text-[#10B981] hover:text-[#059669] font-medium transition">Sign in</Link>
+        </p>
       </div>
     </div>
   );
+
 };
 
 export default Register;

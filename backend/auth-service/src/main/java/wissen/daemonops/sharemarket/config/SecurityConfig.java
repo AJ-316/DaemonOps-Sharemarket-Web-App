@@ -12,11 +12,14 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+
 import wissen.daemonops.sharemarket.models.Role;
 import wissen.daemonops.sharemarket.models.User;
 import wissen.daemonops.sharemarket.repos.UserRepo;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -27,15 +30,38 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
+    // @Bean
+    // public SecurityFilterChain securityFilterChain(HttpSecurity http) {
+    // http.csrf(AbstractHttpConfigurer::disable)
+    // .authorizeHttpRequests(auth -> auth
+    // .requestMatchers("/api/auth/**").permitAll()
+    // .anyRequest().authenticated()
+    // ).sessionManagement(session ->
+    // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+    // ).addFilterBefore(jwtAuthenticationFilter,
+    // UsernamePasswordAuthenticationFilter.class);
+
+    // return http.build();
+    // }
+
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-        http.csrf(AbstractHttpConfigurer::disable)
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+                .cors(cors -> cors.configurationSource(request -> {
+                    CorsConfiguration config = new CorsConfiguration();
+                    config.setAllowedOrigins(List.of("http://localhost:5173"));
+                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+                    config.setAllowedHeaders(List.of("*"));
+                    config.setAllowCredentials(true);
+                    return config;
+                }))
+                // .csrf(AbstractHttpConfigurer::disable)
+                .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .anyRequest().authenticated()
-                ).sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                ).addFilterBefore(jwtAuthenticationFilter,
+                        .anyRequest().authenticated())
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .addFilterBefore(jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -53,7 +79,7 @@ public class SecurityConfig {
 
     @Bean
     CommandLineRunner seedAdmin(UserRepo userRepo,
-                                PasswordEncoder encoder) {
+            PasswordEncoder encoder) {
 
         return args -> {
 
