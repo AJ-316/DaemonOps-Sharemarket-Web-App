@@ -1,12 +1,8 @@
-import './App.css'
+import React from "react";
+import Routing from "./Routing";
 
 function App() {
-
-  return (
-    <>
-      <h1 className="text-4xl">Test</h1>
-    </>
-  )
+  return <Routing />;
 }
 
-export default App
+export default App;
