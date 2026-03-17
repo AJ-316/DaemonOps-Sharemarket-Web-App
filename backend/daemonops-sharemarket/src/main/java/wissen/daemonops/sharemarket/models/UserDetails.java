@@ -3,11 +3,12 @@ package wissen.daemonops.sharemarket.models;
 import java.time.LocalDate;
 
 import jakarta.validation.constraints.Pattern;
-
+import lombok.Data;
 import jakarta.persistence.Column;
 import jakarta.persistence.*;
 
 @Entity
+@Data
 public class UserDetails {
 	
 	@Id

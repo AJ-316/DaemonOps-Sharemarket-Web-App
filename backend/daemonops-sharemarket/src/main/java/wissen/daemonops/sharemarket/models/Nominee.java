@@ -3,9 +3,11 @@ package wissen.daemonops.sharemarket.models;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Pattern;
+import lombok.Data;
 
 @Entity
 @Table(name = "nominees")
+@Data
 public class Nominee {
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
