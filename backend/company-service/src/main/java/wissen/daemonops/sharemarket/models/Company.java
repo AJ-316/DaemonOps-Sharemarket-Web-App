@@ -26,11 +26,8 @@ public class Company {
 
 	private Long totalSharesIssued;
 
+	@Column(nullable = false)
     private LocalDateTime createdAt;
-
-    @OneToOne(mappedBy = "company", cascade = CascadeType.ALL)
-    @JsonIgnore
-    private ShareListing shareListing;
     
     public Double getInitialPrice() {
 		return initialPrice;
@@ -94,13 +91,5 @@ public class Company {
 
 	public void setCreatedAt(LocalDateTime createdAt) {
 		this.createdAt = createdAt;
-	}
-
-	public ShareListing getShareListing() {
-		return shareListing;
-	}
-
-	public void setShareListing(ShareListing shareListing) {
-		this.shareListing = shareListing;
 	}
 }

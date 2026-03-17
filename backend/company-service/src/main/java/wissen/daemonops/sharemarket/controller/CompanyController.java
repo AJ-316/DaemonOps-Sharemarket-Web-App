@@ -1,77 +1,59 @@
 package wissen.daemonops.sharemarket.controller;
 
-import java.time.LocalDateTime;
 import java.util.List;
-
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import lombok.*;
-import wissen.daemonops.sharemarket.models.Company;
-import wissen.daemonops.sharemarket.models.ShareListing;
-import wissen.daemonops.sharemarket.repos.CompanyRepo;
-import wissen.daemonops.sharemarket.repos.ShareListingRepo;
+import wissen.daemonops.sharemarket.dtos.CompanyRequest;
+import wissen.daemonops.sharemarket.dtos.CompanyResponse;
+import wissen.daemonops.sharemarket.services.CompanyService;
 
 @RestController
 @RequestMapping("/companies")
-@RequiredArgsConstructor
 public class CompanyController {
 
-    @Autowired
-    private CompanyRepo companyRepo;
-    
-    @Autowired
-    private ShareListingRepo shareListingRepo;
+    private final CompanyService companyService;
+
+    public CompanyController(CompanyService companyService) {
+        this.companyService = companyService;
+    }
 
     @PostMapping
-    public ResponseEntity<?> addCompany(@RequestBody Company company) {
-        Double price = company.getInitialPrice();
-        Company saved = companyRepo.save(company);
-        ShareListing listing = new ShareListing();
-        listing.setCompany(saved);
-        listing.setCurrentPrice(price);
-        listing.setOpenPrice(price);
-        listing.setHighToday(price);
-        listing.setLowToday(price);
-        listing.setTotalVolume(0L);
-        listing.setLastUpdated(LocalDateTime.now());
-
-        shareListingRepo.save(listing);
-
-        return ResponseEntity.ok(saved);
-    }
-
-    @GetMapping
-    public List<Company> getAllCompanies() {
-    	List<Company> data = companyRepo.findAll();
-        return data;
-    }
-
-    @GetMapping("/{id}")
-    public Company getCompanyById(@PathVariable Long id) {
-        return companyRepo.findById(id).orElseThrow(() -> new RuntimeException("Company not found"));
+    public ResponseEntity<CompanyResponse> addCompany(
+            @RequestBody CompanyRequest request,
+            @RequestHeader("X-User-Role") String role) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(companyService.addCompany(request, role));
     }
 
     @PutMapping("/{id}")
-    public Company updateCompany(@PathVariable Long id, @RequestBody Company updated) {
-
-        Company company = companyRepo.findById(id)
-                .orElseThrow(() -> new RuntimeException("Company not found"));
-
-        company.setTicker(updated.getTicker());
-        company.setName(updated.getName());
-        company.setSector(updated.getSector());
-        company.setDescription(updated.getDescription());
-        company.setTotalSharesIssued(updated.getTotalSharesIssued());
-        company.setCreatedAt(updated.getCreatedAt());
-
-        return companyRepo.save(company);
+    public ResponseEntity<CompanyResponse> updateCompany(
+            @PathVariable Long id,
+            @RequestBody CompanyRequest request,
+            @RequestHeader("X-User-Role") String role) {
+        return ResponseEntity.ok(companyService.updateCompany(id, request, role));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteCompany(@PathVariable Long id) {
-        companyRepo.deleteById(id);
-        return ResponseEntity.ok("Deleted successfully");
+    public ResponseEntity<String> removeCompany(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Role") String role) {
+        companyService.removeCompany(id, role);
+        return ResponseEntity.ok("Company removed successfully");
+    }
+
+    @GetMapping
+    public ResponseEntity<List<CompanyResponse>> getAllCompanies() {
+        return ResponseEntity.ok(companyService.getAllCompanies());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<CompanyResponse> getCompanyById(@PathVariable Long id) {
+        return ResponseEntity.ok(companyService.getCompanyById(id));
+    }
+
+    @GetMapping("/sector/{sector}")
+    public ResponseEntity<List<CompanyResponse>> getBySector(@PathVariable String sector) {
+        return ResponseEntity.ok(companyService.getCompaniesBySector(sector));
     }
 }
