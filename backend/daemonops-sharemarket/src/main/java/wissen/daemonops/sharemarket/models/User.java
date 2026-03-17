@@ -1,12 +1,13 @@
 package wissen.daemonops.sharemarket.models;
 
-import java.time.LocalDate;
-
-import jakarta.annotation.Generated;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
 public class User {
 	@Id
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
