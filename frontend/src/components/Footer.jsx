@@ -12,10 +12,10 @@ const Footer = () => {
               <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
-          <span className="text-white font-semibold text-sm">Tradify</span>
+          <span className="text-white font-semibold text-sm">Stocko</span>
         </div>
         <p className="text-slate-600 text-xs">
-          © 2026 Tradify · SEBI Reg. No. INZ000000000
+          © 2026 Stocko · SEBI Reg. No. INZ000000000
         </p>
         <div className="flex gap-5 text-xs text-slate-500">
           <a href="#" className="hover:text-slate-300 transition">Privacy</a>

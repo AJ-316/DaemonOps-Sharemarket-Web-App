@@ -194,7 +194,7 @@ const Home = () => {
           Start investing today.
         </h2>
         <p className="text-slate-400 text-sm max-w-sm mx-auto mb-8">
-          Join 2.4 million traders who trust Tradify. Open your account in under 5 minutes.
+          Join 2.4 million traders who trust Stocko. Open your account in under 5 minutes.
         </p>
         <button
           onClick={() => navigate("/register")}

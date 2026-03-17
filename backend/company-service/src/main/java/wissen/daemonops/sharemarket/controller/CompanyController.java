@@ -8,6 +8,7 @@ import wissen.daemonops.sharemarket.dtos.CompanyRequest;
 import wissen.daemonops.sharemarket.dtos.CompanyResponse;
 import wissen.daemonops.sharemarket.services.CompanyService;
 
+@CrossOrigin(origins = "http://localhost:5173")
 @RestController
 @RequestMapping("/companies")
 public class CompanyController {

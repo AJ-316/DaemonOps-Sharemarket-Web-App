@@ -79,7 +79,8 @@ public class PriceService {
         BigDecimal openPrice = stock.getOpenPriceToday();
 
         // Small random movement max 1%
-        double movementPercent = (random.nextDouble() * 0.02) - 0.01; // -1% to +1%
+        // double movementPercent = (random.nextDouble() * 0.02) - 0.01; // -1% to +1%
+        double movementPercent = (random.nextDouble() * 0.10) - 0.05;
         BigDecimal movement = currentPrice.multiply(BigDecimal.valueOf(Math.abs(movementPercent)));
 
         BigDecimal newPrice = movementPercent >= 0
@@ -110,5 +111,10 @@ public class PriceService {
     public StockPrice getStockByCompanyId(Long companyId) {
         return stockPriceRepo.findByCompanyId(companyId)
                 .orElseThrow(() -> new RuntimeException("Stock not found for companyId: " + companyId));
+    }
+
+    public void deleteByCompanyId(Long companyId) {
+        stockPriceRepo.findByCompanyId(companyId)
+                .ifPresent(stockPriceRepo::delete);
     }
 }

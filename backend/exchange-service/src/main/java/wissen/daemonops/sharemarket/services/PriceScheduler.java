@@ -17,8 +17,8 @@ public class PriceScheduler {
     private final StockPriceRepo stockPriceRepo;
     private final PriceService priceService;
 
-    // Random fluctuation every 5 seconds
-    @Scheduled(fixedDelay = 5000)
+    // Random fluctuation every second
+    @Scheduled(fixedDelay = 1000)
     public void fluctuateAllPrices() {
         List<StockPrice> allStocks = stockPriceRepo.findAll();
         allStocks.forEach(priceService::randomFluctuate);

@@ -4,18 +4,14 @@ import java.util.List;
 import java.math.*;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import lombok.RequiredArgsConstructor;
 import wissen.daemonops.sharemarket.models.StockPrice;
 import wissen.daemonops.sharemarket.services.PriceService;
 
 @RestController
+@CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/stocks")
 @RequiredArgsConstructor
 public class StockController {
@@ -38,5 +34,11 @@ public class StockController {
             @RequestParam Long companyId,
             @RequestParam BigDecimal initialPrice) {
         return ResponseEntity.ok(priceService.initializeStock(companyId, initialPrice));
+    }
+
+    @DeleteMapping("/company/{companyId}")
+    public ResponseEntity<String> deleteStock(@PathVariable Long companyId) {
+        priceService.deleteByCompanyId(companyId);
+        return ResponseEntity.ok("Stock removed");
     }
 }
