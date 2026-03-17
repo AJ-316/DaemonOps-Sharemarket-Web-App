@@ -3,47 +3,52 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Register from "./screens/Register";
 import Login from "./screens/Login";
 import Home from "./screens/Home";
-
+import Dashboard from "./screens/Dashboard";
 
 const Routing = () => {
-  const [isAuthenticated, setIsAuthenticated] = React.useState(false);
+  // const [isAuthenticated, setIsAuthenticated] = React.useState(false);
 
-  const handleRegistrationComplete = () => {
-    // After registration, redirect to login
-    window.location.href = "/login";
-  };
+  // const handleRegistrationComplete = () => {
+  //   // After registration, redirect to login
+  //   window.location.href = "/login";
+  // };
 
-  const handleLoginSuccess = () => {
-    setIsAuthenticated(true);
-  };
+  // const handleLoginSuccess = () => {
+  //   setIsAuthenticated(true);
+  // };
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route 
+    <Routes>
+      {/* <Route 
           path="/" 
           element={<Navigate to="/register" replace />} 
-        />
-        <Route 
-          path="/register" 
-          element={
-            <Register onComplete={handleRegistrationComplete} />
-          } 
-        />
-        <Route 
-          path="/login" 
-          element={
-            <Login onLoginSuccess={handleLoginSuccess} />
-          } 
-        />
-        <Route 
-          path="/home" 
-          element={
-            isAuthenticated ? <Home /> : <Navigate to="/login" replace />
-          } 
-        />
-      </Routes>
-    </BrowserRouter>
+        /> */}
+      <Route
+        path="/register"
+        element={
+          <Register />
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <Login />
+        }
+      />
+      <Route
+        path="/dashboard"
+        element={
+          <Dashboard />
+        }
+      />
+      <Route
+        path="/"
+        element={
+          <Home />
+          // isAuthenticated ? <Home /> : <Navigate to="/login" replace />
+        }
+      />
+    </Routes>
   );
 };
 

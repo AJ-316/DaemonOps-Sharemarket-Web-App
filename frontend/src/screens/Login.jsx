@@ -1,28 +1,43 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const Login = ({ onLoginSuccess }) => {
+const Login = () => {
   const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [step, setStep] = useState(1);
-  const [otp, setOtp] = useState("");
-  const [trespass, setTrespass] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const handleCredentialsSubmit = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (email && password) setStep(2);
-  };
+    setError("");
 
-  const handleTrespass = () => {
-    setTrespass(true);
-    setOtp("000000");
-  };
+    if (!email || !password) {
+      setError("All fields are required");
+      return;
+    }
 
-  const handleVerifyOtp = () => {
-    if (otp.length === 6) {
-      if (onLoginSuccess) onLoginSuccess();
-      navigate("/home");
+    try {
+      setLoading(true);
+
+      const res = await axios.post(
+        "http://localhost:8080/api/auth/login",
+        { email, password },
+        { headers: { "Content-Type": "application/json" } }
+      );
+
+      if (res.data.token) {
+        localStorage.setItem("token", res.data.token);
+        navigate("/dashboard");
+      } else {
+        setError("Invalid credentials");
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Something went wrong. Try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -30,83 +45,56 @@ const Login = ({ onLoginSuccess }) => {
     <div className="min-h-screen bg-[#ECFDF5] flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-[#A7F3D0]">
         <h2 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
-          {step === 1 ? "Login" : "Enter OTP"}
+          Login
         </h2>
 
-        {step === 1 ? (
-          <form onSubmit={handleCredentialsSubmit} className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email *
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981] focus:ring-opacity-30 outline-none transition"
-                placeholder="john@example.com"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Password *
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981] focus:ring-opacity-30 outline-none transition"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-            <button
-              type="submit"
-              className="w-full bg-[#10B981] hover:bg-[#059669] text-white font-medium py-3 rounded-xl transition"
-            >
-              Login
-            </button>
-          </form>
-        ) : (
-          <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                OTP *
-              </label>
-              <input
-                type="text"
-                value={otp}
-                onChange={(e) => setOtp(e.target.value)}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981] focus:ring-opacity-30 outline-none transition"
-                placeholder="6-digit OTP"
-                maxLength={6}
-              />
-            </div>
-            <button
-              onClick={handleVerifyOtp}
-              disabled={otp.length !== 6}
-              className={`w-full font-medium py-3 rounded-xl transition ${
-                otp.length === 6
-                  ? "bg-[#10B981] hover:bg-[#059669] text-white"
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed"
-              }`}
-            >
-              Verify
-            </button>
-            <button
-              onClick={handleTrespass}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-3 rounded-xl transition"
-            >
-              Trespass (Bypass OTP)
-            </button>
-            {trespass && (
-              <p className="text-sm text-green-600 text-center">
-                Trespass activated! OTP filled as 000000.
-              </p>
-            )}
-          </div>
+        {error && (
+          <p className="text-red-500 text-sm mb-4 text-center">{error}</p>
         )}
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          {/* Email */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Email *
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981] outline-none transition"
+              placeholder="john@example.com"
+              required
+            />
+          </div>
+
+          {/* Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Password *
+            </label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#10B981] focus:ring-2 focus:ring-[#10B981] outline-none transition"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+
+          {/* Button */}
+          <button
+            type="submit"
+            disabled={loading}
+            className={`w-full font-medium py-3 rounded-xl transition ${loading
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-[#10B981] hover:bg-[#059669] text-white"
+              }`}
+          >
+            {loading ? "Logging in..." : "Login"}
+          </button>
+        </form>
       </div>
     </div>
   );
