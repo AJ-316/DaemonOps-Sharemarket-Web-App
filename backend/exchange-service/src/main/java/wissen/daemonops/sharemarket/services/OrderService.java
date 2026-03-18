@@ -11,13 +11,11 @@ import lombok.RequiredArgsConstructor;
 import wissen.daemonops.sharemarket.dtos.OrderRequest;
 import wissen.daemonops.sharemarket.dtos.OrderResponse;
 import wissen.daemonops.sharemarket.exceptions.TradeRejectedException;
-import wissen.daemonops.sharemarket.models.Order;
-import wissen.daemonops.sharemarket.models.OrderStatus;
-import wissen.daemonops.sharemarket.models.OrderType;
+import wissen.daemonops.sharemarket.models.*;
 import wissen.daemonops.sharemarket.models.Portfolio;
-import wissen.daemonops.sharemarket.models.StockPrice;
 import wissen.daemonops.sharemarket.repos.OrderRepo;
 import wissen.daemonops.sharemarket.repos.PortfolioRepo;
+import wissen.daemonops.sharemarket.repos.UserHoldingsRepo;
 import wissen.daemonops.sharemarket.repos.StockPriceRepo;
 
 @Service
@@ -25,6 +23,7 @@ import wissen.daemonops.sharemarket.repos.StockPriceRepo;
 public class OrderService {
 
     private final OrderRepo orderRepo;
+    private final UserHoldingsRepo userHoldingsRepo;
     private final PortfolioRepo portfolioRepo;
     private final StockPriceRepo stockPriceRepo;
     private final PriceService priceService;
@@ -35,11 +34,11 @@ public class OrderService {
 
         // SELL check — does user have enough shares?
         if (request.getOrderType() == OrderType.SELL) {
-            Portfolio portfolio = portfolioRepo
+            UserHoldings userHoldings = userHoldingsRepo
                     .findByUserIdAndCompanyId(userId, request.getCompanyId())
                     .orElse(null);
 
-            if (portfolio == null || portfolio.getQuantityHeld() < request.getQuantity()) {
+            if (userHoldings == null || userHoldings.getQuantityHeld() < request.getQuantity()) {
                 // Save rejected order
                 Order rejected = Order.builder()
                         .userId(userId)
@@ -102,12 +101,12 @@ public class OrderService {
     }
 
     private void updatePortfolio(Long userId, OrderRequest request, BigDecimal tradePrice) {
-        Optional<Portfolio> existing = portfolioRepo
+        Optional<UserHoldings> existing = userHoldingsRepo
                 .findByUserIdAndCompanyId(userId, request.getCompanyId());
 
         if (request.getOrderType() == OrderType.BUY) {
             if (existing.isPresent()) {
-                Portfolio p = existing.get();
+                UserHoldings p = existing.get();
                 int newQty = p.getQuantityHeld() + request.getQuantity();
                 // Recalculate average buy price
                 BigDecimal totalCost = p.getAverageBuyPrice()
@@ -118,27 +117,32 @@ public class OrderService {
                 p.setQuantityHeld(newQty);
                 p.setAverageBuyPrice(newAvg);
                 p.setLastUpdated(LocalDateTime.now());
-                portfolioRepo.save(p);
+                userHoldingsRepo.save(p);
             } else {
-                Portfolio p = Portfolio.builder()
+                if(portfolioRepo.existsById(request.getPortfolioId())) {
+                    throw new IllegalArgumentException("No such Portfolio found: " + request.getPortfolioId());
+                }
+
+                UserHoldings p = UserHoldings.builder()
                         .userId(userId)
+                        .portfolioId(request.getPortfolioId())
                         .companyId(request.getCompanyId())
                         .quantityHeld(request.getQuantity())
                         .averageBuyPrice(tradePrice)
                         .lastUpdated(LocalDateTime.now())
                         .build();
-                portfolioRepo.save(p);
+                userHoldingsRepo.save(p);
             }
         } else {
             // SELL
             existing.ifPresent(p -> {
                 int newQty = p.getQuantityHeld() - request.getQuantity();
                 if (newQty == 0) {
-                    portfolioRepo.delete(p);
+                    userHoldingsRepo.delete(p);
                 } else {
                     p.setQuantityHeld(newQty);
                     p.setLastUpdated(LocalDateTime.now());
-                    portfolioRepo.save(p);
+                    userHoldingsRepo.save(p);
                 }
             });
         }
