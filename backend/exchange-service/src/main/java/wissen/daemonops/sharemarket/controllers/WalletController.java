@@ -17,7 +17,7 @@ import wissen.daemonops.sharemarket.services.WalletService;
 
 @RestController
 @RequestMapping("/wallet")
-@CrossOrigin(origins = "http://localhost:5173")
+//@CrossOrigin(origins = "http://localhost:5173")
 @RequiredArgsConstructor
 public class WalletController {
 

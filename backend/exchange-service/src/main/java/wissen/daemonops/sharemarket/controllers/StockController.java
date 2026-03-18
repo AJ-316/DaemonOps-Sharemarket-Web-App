@@ -11,7 +11,7 @@ import wissen.daemonops.sharemarket.models.StockPrice;
 import wissen.daemonops.sharemarket.services.PriceService;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+//@CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/stocks")
 @RequiredArgsConstructor
 public class StockController {

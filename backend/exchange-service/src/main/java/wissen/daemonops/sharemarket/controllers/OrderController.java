@@ -12,7 +12,7 @@ import wissen.daemonops.sharemarket.models.Order;
 import wissen.daemonops.sharemarket.services.OrderService;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+// @CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/orders")
 @RequiredArgsConstructor
 public class OrderController {

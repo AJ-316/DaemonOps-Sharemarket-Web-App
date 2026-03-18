@@ -6,20 +6,15 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.web.cors.CorsConfiguration;
 
 import wissen.daemonops.sharemarket.models.Role;
 import wissen.daemonops.sharemarket.models.User;
 import wissen.daemonops.sharemarket.repos.UserRepo;
-
-import java.time.LocalDate;
-import java.util.List;
 
 @Configuration
 public class SecurityConfig {
@@ -30,45 +25,21 @@ public class SecurityConfig {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
     }
 
-    // @Bean
-    // public SecurityFilterChain securityFilterChain(HttpSecurity http) {
-    // http.csrf(AbstractHttpConfigurer::disable)
-    // .authorizeHttpRequests(auth -> auth
-    // .requestMatchers("/api/auth/**").permitAll()
-    // .anyRequest().authenticated()
-    // ).sessionManagement(session ->
-    // session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-    // ).addFilterBefore(jwtAuthenticationFilter,
-    // UsernamePasswordAuthenticationFilter.class);
-
-    // return http.build();
-    // }
-
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(request -> {
-                    CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOrigins(List.of("http://localhost:5173"));
-                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    config.setAllowedHeaders(List.of("*"));
-                    config.setAllowCredentials(true);
-                    return config;
-                }))
-                // .csrf(AbstractHttpConfigurer::disable)
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .anyRequest().authenticated())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .addFilterBefore(jwtAuthenticationFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
 
@@ -78,13 +49,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    CommandLineRunner seedAdmin(UserRepo userRepo,
-            PasswordEncoder encoder) {
-
+    CommandLineRunner seedAdmin(UserRepo userRepo, PasswordEncoder encoder) {
         return args -> {
-
             if (!userRepo.existsByEmail("admin@gmail.com")) {
-
                 User admin = new User();
                 admin.setEmail("admin@gmail.com");
                 admin.setPassword(encoder.encode("admin123"));

@@ -1,5 +1,5 @@
 import axios from "axios";
-const axiosCompany = axios.create({ baseURL: "http://localhost:8081" });
+const axiosCompany = axios.create({ baseURL: "http://localhost:8888" });
 
 axiosCompany.interceptors.request.use((config) => {
     const token = localStorage.getItem("token");

@@ -13,7 +13,7 @@ import wissen.daemonops.sharemarket.services.PortfolioService;
 import wissen.daemonops.sharemarket.services.UserHoldingsService;
 
 @RestController
-@CrossOrigin(origins = "http://localhost:5173")
+//@CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/portfolio")
 @RequiredArgsConstructor
 public class UserHoldingsController {

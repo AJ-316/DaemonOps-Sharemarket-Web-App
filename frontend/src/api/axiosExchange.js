@@ -1,5 +1,5 @@
 import axios from "axios";
-const axiosExchange = axios.create({ baseURL: "http://localhost:8082" });
+const axiosExchange = axios.create({ baseURL: "http://localhost:8888" });
 
 axiosExchange.interceptors.request.use((config) => {
     const token = localStorage.getItem("token");
