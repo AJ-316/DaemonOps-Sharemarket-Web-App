@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, memo } from "react";
 import { useNavigate } from "react-router-dom";
 
-// ── TradingView Widget ──
 function TradingViewWidget() {
   const container = useRef();
   const scriptAdded = useRef(false);
@@ -46,15 +45,14 @@ function TradingViewWidget() {
   }, []);
 
   return (
-    <div className="tradingview-widget-container w-full h-full" ref={container}>
-      <div className="tradingview-widget-container__widget w-full h-full" />
+    <div className="tradingview-widget-container h-full w-full" ref={container}>
+      <div className="tradingview-widget-container__widget h-full w-full" />
     </div>
   );
 }
 
 const TradingViewWidgetMemo = memo(TradingViewWidget);
 
-// ── Features data ──
 const features = [
   {
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
@@ -85,128 +83,97 @@ const stats = [
   { value: "₹20", label: "Max Brokerage" },
 ];
 
-// ── Home ──
 const Home = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white font-sans">
-
-      {/* ── Hero ── */}
-      <section className="max-w-screen-xl mx-auto px-6 pt-16 pb-12 grid lg:grid-cols-2 gap-12 items-center">
-
-        {/* Left */}
+    <div className="pb-10">
+      <section className="app-shell grid gap-10 pb-12 pt-12 lg:grid-cols-2 lg:items-center lg:pt-16">
         <div>
-          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100
-                          text-emerald-700 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
             NSE &amp; BSE Live · Market Open
           </div>
 
-          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-5">
-            Invest smarter.<br />
+          <h1 className="text-4xl font-black leading-tight text-slate-900 sm:text-5xl">
+            Invest smarter.
+            <br />
             <span className="text-emerald-600">Trade with confidence.</span>
           </h1>
 
-          <p className="text-gray-500 text-base leading-relaxed max-w-md mb-8">
-            Open a free demat account in minutes. Stocks, F&amp;O, IPOs and
-            mutual funds - all from one platform built for Indian markets.
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-slate-600">
+            Open a free demat account in minutes. Stocks, F&amp;O, IPOs and mutual funds - all from one platform built for Indian markets.
           </p>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap gap-3">
             <button
               onClick={() => navigate("/register")}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm
-                         font-semibold rounded-xl transition-all shadow-md shadow-emerald-100
-                         active:scale-[0.98]"
+              className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white shadow-sm shadow-emerald-200 transition hover:bg-emerald-700"
             >
               Open Free Account
             </button>
             <button
               onClick={() => navigate("/login")}
-              className="px-6 py-3 border border-gray-200 hover:border-gray-300 text-gray-700
-                         text-sm font-medium rounded-xl transition hover:bg-gray-50"
+              className="rounded-xl border border-slate-200 bg-white px-6 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
             >
               Sign In
             </button>
           </div>
 
-          <p className="text-xs text-gray-400 mt-4">
-            No charges · Paperless KYC · Takes 5 minutes
-          </p>
+          <p className="mt-4 text-xs text-slate-400">No charges · Paperless KYC · Takes 5 minutes</p>
         </div>
 
-        {/* Right — TradingView */}
-        <div className="w-full h-[380px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+        <div className="panel h-[390px] overflow-hidden">
           <TradingViewWidgetMemo />
         </div>
       </section>
 
-      {/* ── Stats ── */}
-      <section className="bg-emerald-600">
-        <div className="max-w-screen-xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section className="bg-slate-900">
+        <div className="app-shell grid grid-cols-2 gap-6 py-8 md:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-3xl font-bold text-white">{s.value}</p>
-              <p className="text-emerald-100 text-sm mt-1">{s.label}</p>
+            <div key={s.label} className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-center">
+              <p className="text-2xl font-black text-white">{s.value}</p>
+              <p className="mt-1 text-xs font-medium text-slate-300">{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ── Features ── */}
-      <section className="bg-gray-50 py-20">
-        <div className="max-w-screen-xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">
-              Everything you need to trade
-            </h2>
-            <p className="text-gray-500 max-w-md mx-auto text-sm">
-              Powerful tools for first-time investors and seasoned traders alike.
-            </p>
-          </div>
+      <section className="app-shell py-14">
+        <div className="mx-auto mb-10 max-w-xl text-center">
+          <h2 className="text-3xl font-bold text-slate-900">Everything you need to trade</h2>
+          <p className="mt-2 text-sm text-slate-600">Powerful tools for first-time investors and seasoned traders alike.</p>
+        </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            {features.map((f) => (
-              <div
-                key={f.title}
-                className="bg-white rounded-2xl p-6 border border-gray-100
-                           hover:shadow-md hover:-translate-y-1 transition-all duration-200"
-              >
-                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center
-                                justify-center text-emerald-600 mb-4">
-                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" strokeWidth="1.8">
-                    {f.icon}
-                  </svg>
-                </div>
-                <h3 className="text-gray-900 font-semibold text-sm mb-1.5">{f.title}</h3>
-                <p className="text-gray-400 text-xs leading-relaxed">{f.desc}</p>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {features.map((f) => (
+            <div key={f.title} className="panel p-6 transition hover:-translate-y-0.5 hover:shadow-md">
+              <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
+                  {f.icon}
+                </svg>
               </div>
-            ))}
-          </div>
+              <h3 className="text-sm font-semibold text-slate-900">{f.title}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-slate-500">{f.desc}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* ── CTA ── */}
-      <section className="bg-slate-950 py-20 text-center px-6">
-        <h2 className="text-3xl font-bold text-white mb-4">
-          Start investing today.
-        </h2>
-        <p className="text-slate-400 text-sm max-w-sm mx-auto mb-8">
-          Join 2.4 million traders who trust Stocko. Open your account in under 5 minutes.
-        </p>
-        <button
-          onClick={() => navigate("/register")}
-          className="px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold
-                     text-sm rounded-xl transition shadow-lg shadow-emerald-900/30
-                     active:scale-[0.98]"
-        >
-          Open Free Account →
-        </button>
-        <p className="text-slate-600 text-xs mt-4">
-          No credit card · SEBI Registered · 256-bit encrypted
-        </p>
+      <section className="app-shell">
+        <div className="overflow-hidden rounded-3xl bg-slate-950 px-6 py-14 text-center sm:px-10">
+          <h2 className="text-3xl font-bold text-white">Start investing today.</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm text-slate-400">
+            Join 2.4 million traders who trust Stocko. Open your account in under 5 minutes.
+          </p>
+          <button
+            onClick={() => navigate("/register")}
+            className="mt-8 rounded-xl bg-emerald-600 px-7 py-3.5 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-500"
+          >
+            Open Free Account
+          </button>
+          <p className="mt-4 text-xs text-slate-500">No credit card · SEBI Registered · 256-bit encrypted</p>
+        </div>
       </section>
 
     </div>

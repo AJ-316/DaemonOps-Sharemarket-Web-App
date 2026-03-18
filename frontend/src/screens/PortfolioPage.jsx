@@ -15,23 +15,24 @@ const fmtCompact = (n) => {
 };
 
 const SLICE_COLORS = [
-  "#10b981","#3b82f6","#f59e0b","#8b5cf6","#ef4444","#06b6d4","#f43f5e","#84cc16","#fb923c"
+  "#10b981", "#3b82f6", "#f59e0b", "#8b5cf6", "#ef4444", "#06b6d4", "#f43f5e", "#84cc16", "#fb923c"
 ];
 
-// ── Donut SVG (self-contained, correct geometry) ───────────────────────────
 function DonutSVG({ slices }) {
   const total = slices.reduce((s, x) => s + x.value, 0);
   if (total === 0) {
     return (
       <svg viewBox="0 0 120 120" width="120" height="120">
-        <circle cx="60" cy="60" r="44" fill="none" stroke="#e5e7eb" strokeWidth="18"/>
+        <circle cx="60" cy="60" r="44" fill="none" stroke="#e5e7eb" strokeWidth="18" />
         <text x="60" y="64" textAnchor="middle" fontSize="10" fill="#9ca3af">Empty</text>
       </svg>
     );
   }
-  const R = 44, IR = 26, CX = 60, CY = 60;
+  const R = 44;
+  const IR = 26;
+  const CX = 60;
+  const CY = 60;
 
-  // Single slice = full donut ring (arc path is degenerate at 360°)
   if (slices.length === 1) {
     return (
       <svg viewBox="0 0 120 120" width="120" height="120" style={{ flexShrink: 0 }}>
@@ -41,20 +42,23 @@ function DonutSVG({ slices }) {
     );
   }
 
-  let theta = -Math.PI / 2;
-  const paths = slices.map((s) => {
+  const segments = slices.reduce((acc, s) => {
+    const start = acc.length ? acc[acc.length - 1].end : -Math.PI / 2;
     const sweep = (s.value / total) * 2 * Math.PI;
-    if (sweep < 0.001) return null;
-    const x1 = CX + R * Math.cos(theta);
-    const y1 = CY + R * Math.sin(theta);
-    theta += sweep;
-    const x2 = CX + R * Math.cos(theta);
-    const y2 = CY + R * Math.sin(theta);
-    const ix1 = CX + IR * Math.cos(theta - sweep);
-    const iy1 = CY + IR * Math.sin(theta - sweep);
-    const ix2 = CX + IR * Math.cos(theta);
-    const iy2 = CY + IR * Math.sin(theta);
-    const lg = sweep > Math.PI ? 1 : 0;
+    return [...acc, { ...s, start, end: start + sweep, sweep }];
+  }, []);
+
+  const paths = segments.map((s) => {
+    if (s.sweep < 0.001) return null;
+    const x1 = CX + R * Math.cos(s.start);
+    const y1 = CY + R * Math.sin(s.start);
+    const x2 = CX + R * Math.cos(s.end);
+    const y2 = CY + R * Math.sin(s.end);
+    const ix1 = CX + IR * Math.cos(s.start);
+    const iy1 = CY + IR * Math.sin(s.start);
+    const ix2 = CX + IR * Math.cos(s.end);
+    const iy2 = CY + IR * Math.sin(s.end);
+    const lg = s.sweep > Math.PI ? 1 : 0;
     const d = [
       `M${x1.toFixed(2)},${y1.toFixed(2)}`,
       `A${R},${R} 0 ${lg} 1 ${x2.toFixed(2)},${y2.toFixed(2)}`,
@@ -62,7 +66,7 @@ function DonutSVG({ slices }) {
       `A${IR},${IR} 0 ${lg} 0 ${ix1.toFixed(2)},${iy1.toFixed(2)}`,
       "Z"
     ].join(" ");
-    return <path key={s.label} d={d} fill={s.color} stroke="white" strokeWidth="1.5"/>;
+    return <path key={s.label} d={d} fill={s.color} stroke="white" strokeWidth="1.5" />;
   });
 
   return (
@@ -72,24 +76,23 @@ function DonutSVG({ slices }) {
   );
 }
 
-// ── Sparkline for price history ────────────────────────────────────────────
 function Sparkline({ data, color }) {
   if (!data || data.length < 2) return null;
   const min = Math.min(...data);
   const max = Math.max(...data);
   const range = max - min || 1;
-  const W = 60, H = 22;
+  const W = 60;
+  const H = 22;
   const pts = data.map((v, i) =>
     `${((i / (data.length - 1)) * W).toFixed(1)},${(H - ((v - min) / range) * H).toFixed(1)}`
   ).join(" ");
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round"/>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
     </svg>
   );
 }
 
-// ── Main ──────────────────────────────────────────────────────────────────
 const PortfolioPage = () => {
   const navigate = useNavigate();
   const [portfolios, setPortfolios] = useState([]);
@@ -97,7 +100,7 @@ const PortfolioPage = () => {
   const [holdings, setHoldings] = useState([]);
   const [companies, setCompanies] = useState({});
   const [prices, setPrices] = useState({});
-  const [priceHistory, setPriceHistory] = useState({});  // companyId → [price, ...]
+  const [priceHistory, setPriceHistory] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("stocks");
   const [orders, setOrders] = useState([]);
@@ -106,7 +109,6 @@ const PortfolioPage = () => {
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
 
-  // companies
   useEffect(() => {
     axiosCompany.get("/companies").then((res) => {
       const map = {};
@@ -115,7 +117,6 @@ const PortfolioPage = () => {
     });
   }, []);
 
-  // live prices + sparkline history (silent on 401 — may need auth on exchange service)
   const refreshPrices = useCallback(() => {
     axiosExchange.get("/stocks")
       .then((res) => {
@@ -132,7 +133,7 @@ const PortfolioPage = () => {
           return next;
         });
       })
-      .catch(() => {}); // silence 401/network — prices are best-effort
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -141,7 +142,6 @@ const PortfolioPage = () => {
     return () => clearInterval(iv);
   }, [refreshPrices]);
 
-  // portfolios
   const fetchPortfolios = useCallback(() => {
     axiosPortfolio.get("/portfolio")
       .then((res) => {
@@ -153,9 +153,8 @@ const PortfolioPage = () => {
       .catch(() => setLoading(false));
   }, []);
 
-  useEffect(() => { fetchPortfolios(); }, []);
+  useEffect(() => { fetchPortfolios(); }, [fetchPortfolios]);
 
-  // holdings — poll every 3s so new purchases appear without page refresh
   const fetchHoldings = useCallback(() => {
     if (!selected) return;
     axiosPortfolio
@@ -170,7 +169,6 @@ const PortfolioPage = () => {
     return () => clearInterval(iv);
   }, [fetchHoldings]);
 
-  // orders — poll every 5s
   const fetchOrders = useCallback(() => {
     axiosPortfolio.get("/orders/history")
       .then((res) => setOrders(res.data || []))
@@ -188,13 +186,15 @@ const PortfolioPage = () => {
     setCreating(true);
     try {
       await axiosPortfolio.post("/portfolio", { name: newName.trim() });
-      setNewName(""); setShowNewInput(false); fetchPortfolios();
-    } finally { setCreating(false); }
+      setNewName("");
+      setShowNewInput(false);
+      fetchPortfolios();
+    } finally {
+      setCreating(false);
+    }
   };
 
-  // ── derived ──
-  const totalInvested = holdings.reduce(
-    (s, h) => s + Number(h.averageBuyPrice || 0) * Number(h.quantityHeld || 0), 0);
+  const totalInvested = holdings.reduce((s, h) => s + Number(h.averageBuyPrice || 0) * Number(h.quantityHeld || 0), 0);
   const totalCurrent = holdings.reduce((s, h) => {
     const p = Number(prices[h.companyId]?.currentPrice || h.averageBuyPrice || 0);
     return s + p * Number(h.quantityHeld || 0);
@@ -213,164 +213,130 @@ const PortfolioPage = () => {
 
   const filteredHoldings = holdings.filter((h) => {
     const c = companies[h.companyId];
-    return !search ||
-      c?.name?.toLowerCase().includes(search.toLowerCase()) ||
-      c?.ticker?.toLowerCase().includes(search.toLowerCase());
+    return !search || c?.name?.toLowerCase().includes(search.toLowerCase()) || c?.ticker?.toLowerCase().includes(search.toLowerCase());
   });
 
-  if (loading) return (
-    <div style={{ height: "calc(100vh - 56px)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
-        <div style={{ width: 28, height: 28, border: "2.5px solid #10b981", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-        <p style={{ fontSize: 13, color: "#9ca3af", margin: 0 }}>Loading portfolios…</p>
+  if (loading) {
+    return (
+      <div className="app-shell flex min-h-[calc(100vh-9rem)] items-center justify-center py-10">
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-emerald-500 border-t-transparent" />
+          <p className="text-sm text-slate-500">Loading portfolios...</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
-    <div style={{ height: "calc(100vh - 56px)", display: "flex", flexDirection: "column", overflow: "hidden", background: "#f8fafc" }}>
+    <div className="app-shell py-6">
+      <div className="mb-4 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="mr-2 text-sm font-bold text-slate-900">Portfolios</span>
+            {portfolios.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => setSelected(p)}
+                className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                  selected?.id === p.id ? "bg-emerald-600 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                {p.name}
+              </button>
+            ))}
 
-      {/* ── TOP BAR ── */}
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "0 24px", height: 52, background: "#fff",
-        borderBottom: "1px solid #f1f5f9", flexShrink: 0
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a", marginRight: 4 }}>Portfolios</span>
-          <div style={{ width: 1, height: 18, background: "#e2e8f0" }} />
-          {portfolios.map((p) => (
-            <button key={p.id} onClick={() => setSelected(p)} style={{
-              padding: "4px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-              border: "none", cursor: "pointer", transition: "all .15s",
-              background: selected?.id === p.id ? "#10b981" : "#f1f5f9",
-              color: selected?.id === p.id ? "#fff" : "#64748b",
-            }}>{p.name}</button>
-          ))}
-          {showNewInput ? (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              <input autoFocus value={newName} onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                placeholder="Portfolio name…"
-                style={{ border: "1px solid #d1fae5", borderRadius: 8, padding: "4px 10px", fontSize: 12, outline: "none", width: 140 }}
-              />
-              <button onClick={handleCreate} disabled={creating} style={{
-                padding: "4px 12px", background: "#10b981", color: "#fff",
-                border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer"
-              }}>{creating ? "…" : "Save"}</button>
-              <button onClick={() => setShowNewInput(false)} style={{
-                padding: "4px 8px", background: "none", border: "none",
-                color: "#94a3b8", cursor: "pointer", fontSize: 14
-              }}>✕</button>
-            </div>
-          ) : (
-            <button onClick={() => setShowNewInput(true)} style={{
-              padding: "4px 12px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-              border: "1.5px dashed #cbd5e1", background: "none", color: "#94a3b8", cursor: "pointer"
-            }}>+ New</button>
-          )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>
-            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", animation: "pulse 2s infinite" }} />
-            Live
-          </span>
-          <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}`}</style>
-          <button onClick={() => navigate("/dashboard")} style={{
-            padding: "5px 14px", borderRadius: 8, fontSize: 12, fontWeight: 500,
-            border: "1px solid #e2e8f0", background: "#fff", color: "#475569", cursor: "pointer"
-          }}>← Markets</button>
+            {showNewInput ? (
+              <div className="flex items-center gap-2">
+                <input
+                  autoFocus
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                  placeholder="Portfolio name..."
+                  className="w-40 rounded-lg border border-slate-200 px-3 py-1.5 text-xs outline-none focus:border-emerald-500"
+                />
+                <button
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white"
+                >
+                  {creating ? "..." : "Save"}
+                </button>
+                <button
+                  onClick={() => setShowNewInput(false)}
+                  className="rounded-lg bg-slate-100 px-2 py-1.5 text-xs text-slate-500"
+                >
+                  X
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowNewInput(true)}
+                className="rounded-lg border border-dashed border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-500 transition hover:border-slate-400 hover:text-slate-700"
+              >
+                + New
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
+              Live
+            </span>
+            <button
+              onClick={() => navigate("/dashboard")}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50"
+            >
+              Markets
+            </button>
+          </div>
         </div>
       </div>
 
       {selected ? (
-        <div style={{ display: "flex", flex: 1, overflow: "hidden", gap: 0 }}>
-
-          {/* ══ LEFT PANEL ══ */}
-          <div style={{
-            width: 288, flexShrink: 0, display: "flex", flexDirection: "column",
-            gap: 12, padding: 16, borderRight: "1px solid #f1f5f9",
-            background: "#fff", overflow: "hidden"
-          }}>
-
-            {/* Hero KPI */}
-            <div style={{
-              background: "linear-gradient(135deg, #059669 0%, #10b981 100%)",
-              borderRadius: 16, padding: "16px 20px", flexShrink: 0
-            }}>
-              <p style={{ fontSize: 10, fontWeight: 700, color: "#d1fae5", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px" }}>
-                Current Value
-              </p>
-              <p style={{ fontSize: 26, fontWeight: 800, color: "#fff", margin: "0 0 4px", fontVariantNumeric: "tabular-nums" }}>
-                {fmtCompact(totalCurrent)}
-              </p>
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{
-                  display: "inline-flex", alignItems: "center", gap: 3,
-                  padding: "2px 8px", borderRadius: 99, fontSize: 11, fontWeight: 700,
-                  background: pnlUp ? "rgba(255,255,255,0.2)" : "rgba(239,68,68,0.25)",
-                  color: pnlUp ? "#ecfdf5" : "#fecaca"
-                }}>
+        <div className="grid gap-4 xl:grid-cols-[320px_1fr]">
+          <aside className="space-y-4">
+            <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-500 p-5 text-white shadow-lg shadow-emerald-200">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-100">Current Value</p>
+              <p className="mt-1 text-3xl font-black">{fmtCompact(totalCurrent)}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs font-semibold">
                   {pnlUp ? "▲" : "▼"} {Math.abs(totalPnlPct).toFixed(2)}%
                 </span>
-                <span style={{ fontSize: 11, color: "#a7f3d0" }}>vs invested</span>
+                <span className="text-xs text-emerald-100">vs invested</span>
               </div>
             </div>
 
-            {/* 2-col KPIs */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, flexShrink: 0 }}>
-              {[
-                { label: "Invested", value: fmtCompact(totalInvested), color: "#0f172a" },
-                {
-                  label: "Total P&L",
-                  value: `${pnlUp ? "+" : ""}${fmtCompact(totalPnl)}`,
-                  color: pnlUp ? "#059669" : "#dc2626"
-                },
-              ].map((k) => (
-                <div key={k.label} style={{
-                  background: "#f8fafc", borderRadius: 12, padding: "12px 14px",
-                  border: "1px solid #f1f5f9"
-                }}>
-                  <p style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 4px" }}>
-                    {k.label}
-                  </p>
-                  <p style={{ fontSize: 15, fontWeight: 700, color: k.color, margin: 0, fontVariantNumeric: "tabular-nums" }}>
-                    {k.value}
-                  </p>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="panel p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Invested</p>
+                <p className="metric-value mt-1 text-sm text-slate-900">{fmtCompact(totalInvested)}</p>
+              </div>
+              <div className="panel p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Total P&L</p>
+                <p className={`metric-value mt-1 text-sm ${pnlUp ? "text-emerald-600" : "text-rose-600"}`}>
+                  {pnlUp ? "+" : ""}{fmtCompact(totalPnl)}
+                </p>
+              </div>
             </div>
 
-            {/* Holdings count chip */}
-            <div style={{
-              display: "flex", alignItems: "center", justifyContent: "space-between",
-              padding: "8px 14px", background: "#f8fafc", borderRadius: 10,
-              border: "1px solid #f1f5f9", flexShrink: 0
-            }}>
-              <span style={{ fontSize: 11, color: "#64748b", fontWeight: 500 }}>Holdings</span>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>{holdings.length} stocks</span>
+            <div className="panel flex items-center justify-between p-4">
+              <span className="text-sm text-slate-500">Holdings</span>
+              <span className="text-sm font-semibold text-slate-900">{holdings.length} stocks</span>
             </div>
 
-            {/* Donut section */}
-            <div style={{
-              background: "#f8fafc", borderRadius: 14, padding: "14px 16px",
-              border: "1px solid #f1f5f9", flexShrink: 0
-            }}>
-              <p style={{ fontSize: 9, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.08em", textTransform: "uppercase", margin: "0 0 12px" }}>
-                Allocation
-              </p>
+            <div className="panel p-4">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-400">Allocation</p>
               {donutSlices.length > 0 ? (
-                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                <div className="flex items-center gap-3">
                   <DonutSVG slices={donutSlices} />
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
+                  <div className="min-w-0 flex-1 space-y-1.5">
                     {donutSlices.map((s) => (
-                      <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: s.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, color: "#475569", fontWeight: 600, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {s.label}
-                        </span>
-                        <span style={{ fontSize: 10, color: "#94a3b8", flexShrink: 0 }}>
+                      <div key={s.label} className="flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+                        <span className="truncate text-xs font-medium text-slate-600">{s.label}</span>
+                        <span className="ml-auto text-[11px] text-slate-400">
                           {donutTotal > 0 ? ((s.value / donutTotal) * 100).toFixed(1) : 0}%
                         </span>
                       </div>
@@ -378,228 +344,171 @@ const PortfolioPage = () => {
                   </div>
                 </div>
               ) : (
-                <div style={{ textAlign: "center", padding: "16px 0", color: "#cbd5e1", fontSize: 12 }}>
-                  No holdings yet
-                </div>
+                <p className="py-4 text-center text-sm text-slate-400">No holdings yet</p>
               )}
             </div>
 
-            {/* Today's summary */}
-            <div style={{
-              marginTop: "auto", padding: "10px 14px", borderRadius: 10,
-              background: pnlUp ? "#f0fdf4" : "#fef2f2",
-              border: `1px solid ${pnlUp ? "#bbf7d0" : "#fecaca"}`,
-              flexShrink: 0
-            }}>
-              <p style={{ fontSize: 10, color: pnlUp ? "#166534" : "#991b1b", fontWeight: 600, margin: "0 0 2px" }}>
+            <div className={`rounded-xl border p-4 ${pnlUp ? "border-emerald-200 bg-emerald-50" : "border-rose-200 bg-rose-50"}`}>
+              <p className={`text-xs font-semibold ${pnlUp ? "text-emerald-700" : "text-rose-700"}`}>
                 {pnlUp ? "Portfolio is up today" : "Portfolio is down today"}
               </p>
-              <p style={{ fontSize: 12, color: pnlUp ? "#15803d" : "#b91c1c", fontWeight: 700, margin: 0 }}>
+              <p className={`mt-1 text-sm font-bold ${pnlUp ? "text-emerald-700" : "text-rose-700"}`}>
                 {pnlUp ? "+" : ""}{fmtCompact(totalPnl)} ({Math.abs(totalPnlPct).toFixed(2)}%)
               </p>
             </div>
-          </div>
+          </aside>
 
-          {/* ══ RIGHT PANEL ══ */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", padding: 16 }}>
-            <div style={{
-              background: "#fff", borderRadius: 16, border: "1px solid #f1f5f9",
-              display: "flex", flexDirection: "column", height: "100%", overflow: "hidden"
-            }}>
-
-              {/* Tab bar */}
-              <div style={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                padding: "12px 20px", borderBottom: "1px solid #f8fafc", flexShrink: 0
-              }}>
-                <div style={{ display: "flex", background: "#f8fafc", borderRadius: 10, padding: 3 }}>
-                  {["stocks", "orders"].map((t) => (
-                    <button key={t} onClick={() => setActiveTab(t)} style={{
-                      padding: "6px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
-                      border: "none", cursor: "pointer", transition: "all .15s",
-                      textTransform: "capitalize",
-                      background: activeTab === t ? "#fff" : "transparent",
-                      color: activeTab === t ? "#0f172a" : "#94a3b8",
-                      boxShadow: activeTab === t ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
-                    }}>{t}</button>
-                  ))}
-                </div>
-                {activeTab === "stocks" && (
-                  <input type="text" placeholder="Search stocks…" value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    style={{
-                      border: "1px solid #f1f5f9", borderRadius: 8, padding: "6px 12px",
-                      fontSize: 12, outline: "none", width: 160, background: "#f8fafc", color: "#0f172a"
-                    }}
-                  />
-                )}
+          <section className="panel overflow-hidden">
+            <div className="flex flex-col gap-3 border-b border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="inline-flex rounded-xl bg-slate-100 p-1">
+                {["stocks", "orders"].map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setActiveTab(t)}
+                    className={`rounded-lg px-4 py-1.5 text-xs font-semibold capitalize transition ${
+                      activeTab === t ? "bg-white text-slate-900 shadow-sm" : "text-slate-500"
+                    }`}
+                  >
+                    {t}
+                  </button>
+                ))}
               </div>
 
-              {/* Table */}
-              <div style={{ flex: 1, overflowY: "auto" }}>
-                {activeTab === "stocks" && (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
-                        {["Stock", "Qty", "Avg Cost", "LTP", "Trend", "Invested", "Current", "P&L"].map((col) => (
-                          <th key={col} style={{
-                            textAlign: "left", padding: "10px 16px",
-                            fontSize: 10, fontWeight: 700, color: "#94a3b8",
-                            letterSpacing: "0.06em", textTransform: "uppercase",
-                            borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap"
-                          }}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredHoldings.length === 0 ? (
-                        <tr><td colSpan={8} style={{ textAlign: "center", padding: "60px 16px" }}>
-                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "#cbd5e1" }}>
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                              <path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 0 1 0 10h-2M11 12h2"/>
-                            </svg>
-                            <span style={{ fontSize: 13 }}>No holdings yet — buy some stocks!</span>
-                          </div>
-                        </td></tr>
-                      ) : filteredHoldings.map((h, idx) => {
-                        const company = companies[h.companyId];
-                        const ltp = Number(prices[h.companyId]?.currentPrice || h.averageBuyPrice || 0);
-                        const avg = Number(h.averageBuyPrice || 0);
-                        const qty = Number(h.quantityHeld || 0);
-                        const invested = avg * qty;
-                        const current = ltp * qty;
-                        const pnl = current - invested;
-                        const pnlPct = invested > 0 ? ((pnl / invested) * 100) : 0;
-                        const up = pnl >= 0;
-                        const color = SLICE_COLORS[idx % SLICE_COLORS.length];
-                        const hist = priceHistory[h.companyId] || [];
-
-                        return (
-                          <tr key={h.id} style={{ borderBottom: "1px solid #f8fafc", transition: "background .1s" }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"}
-                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                            <td style={{ padding: "12px 16px" }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <div style={{
-                                  width: 32, height: 32, borderRadius: 8,
-                                  background: color + "20",
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  flexShrink: 0
-                                }}>
-                                  <span style={{ fontSize: 10, fontWeight: 800, color }}>{(company?.ticker || "?").slice(0, 2)}</span>
-                                </div>
-                                <div>
-                                  <p style={{ margin: 0, fontWeight: 700, color: "#0f172a", fontSize: 12 }}>
-                                    {company?.ticker || h.companyId}
-                                  </p>
-                                  <p style={{ margin: 0, color: "#94a3b8", fontSize: 10, maxWidth: 90, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                    {company?.name}
-                                  </p>
-                                </div>
-                              </div>
-                            </td>
-                            <td style={{ padding: "12px 16px", color: "#475569", fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{qty}</td>
-                            <td style={{ padding: "12px 16px", color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>₹{fmt(avg)}</td>
-                            <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>₹{fmt(ltp)}</td>
-                            <td style={{ padding: "12px 16px" }}>
-                              <Sparkline data={hist} color={up ? "#10b981" : "#ef4444"} />
-                            </td>
-                            <td style={{ padding: "12px 16px", color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>₹{fmt(invested)}</td>
-                            <td style={{ padding: "12px 16px", fontWeight: 600, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>₹{fmt(current)}</td>
-                            <td style={{ padding: "12px 16px" }}>
-                              <div>
-                                <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: 12, color: up ? "#059669" : "#dc2626", fontVariantNumeric: "tabular-nums" }}>
-                                  {up ? "+" : ""}₹{fmt(pnl)}
-                                </p>
-                                <span style={{
-                                  display: "inline-flex", alignItems: "center", gap: 2,
-                                  padding: "1px 6px", borderRadius: 99, fontSize: 10, fontWeight: 700,
-                                  background: up ? "#f0fdf4" : "#fef2f2",
-                                  color: up ? "#059669" : "#dc2626"
-                                }}>
-                                  {up ? "▲" : "▼"} {Math.abs(pnlPct).toFixed(2)}%
-                                </span>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-
-                {activeTab === "orders" && (
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                    <thead>
-                      <tr style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
-                        {["ID", "Stock", "Type", "Qty", "Price", "Total", "Status", "Time"].map((col) => (
-                          <th key={col} style={{
-                            textAlign: "left", padding: "10px 16px",
-                            fontSize: 10, fontWeight: 700, color: "#94a3b8",
-                            letterSpacing: "0.06em", textTransform: "uppercase",
-                            borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap"
-                          }}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {orders.length === 0 ? (
-                        <tr><td colSpan={8} style={{ textAlign: "center", padding: "60px 16px", color: "#cbd5e1", fontSize: 13 }}>
-                          No order history
-                        </td></tr>
-                      ) : orders.map((o) => {
-                        const company = companies[o.companyId];
-                        const isBuy = o.orderType === "BUY";
-                        const ok = o.status === "EXECUTED" || o.status === "COMPLETED";
-                        return (
-                          <tr key={o.id} style={{ borderBottom: "1px solid #f8fafc" }}
-                            onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"}
-                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
-                            <td style={{ padding: "10px 16px", color: "#cbd5e1", fontVariantNumeric: "tabular-nums" }}>#{o.id}</td>
-                            <td style={{ padding: "10px 16px", fontWeight: 700, color: "#0f172a" }}>
-                              {company?.ticker || o.companyId}
-                            </td>
-                            <td style={{ padding: "10px 16px" }}>
-                              <span style={{
-                                padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 700,
-                                background: isBuy ? "#f0fdf4" : "#fef2f2",
-                                color: isBuy ? "#059669" : "#dc2626"
-                              }}>{o.orderType}</span>
-                            </td>
-                            <td style={{ padding: "10px 16px", color: "#475569", fontVariantNumeric: "tabular-nums" }}>{o.quantity}</td>
-                            <td style={{ padding: "10px 16px", color: "#94a3b8", fontVariantNumeric: "tabular-nums" }}>₹{fmt(o.priceAtOrder)}</td>
-                            <td style={{ padding: "10px 16px", fontWeight: 600, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>₹{fmt(o.totalValue)}</td>
-                            <td style={{ padding: "10px 16px" }}>
-                              <span style={{
-                                padding: "2px 8px", borderRadius: 99, fontSize: 10, fontWeight: 700,
-                                background: ok ? "#f0fdf4" : "#fef2f2",
-                                color: ok ? "#059669" : "#dc2626"
-                              }}>{o.status}</span>
-                            </td>
-                            <td style={{ padding: "10px 16px", color: "#94a3b8", whiteSpace: "nowrap" }}>
-                              {o.timestamp ? new Date(o.timestamp).toLocaleString("en-IN", {
-                                day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit"
-                              }) : "—"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+              {activeTab === "stocks" && (
+                <input
+                  type="text"
+                  placeholder="Search stocks..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs outline-none focus:border-emerald-500 sm:w-44"
+                />
+              )}
             </div>
-          </div>
+
+            <div className="max-h-[70vh] overflow-auto">
+              {activeTab === "stocks" && (
+                <table className="min-w-full text-xs">
+                  <thead className="sticky top-0 z-10 bg-slate-50">
+                    <tr>
+                      {["Stock", "Qty", "Avg Cost", "LTP", "Trend", "Invested", "Current", "P&L"].map((col) => (
+                        <th key={col} className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredHoldings.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-400">No holdings yet - buy some stocks!</td>
+                      </tr>
+                    ) : filteredHoldings.map((h, idx) => {
+                      const company = companies[h.companyId];
+                      const ltp = Number(prices[h.companyId]?.currentPrice || h.averageBuyPrice || 0);
+                      const avg = Number(h.averageBuyPrice || 0);
+                      const qty = Number(h.quantityHeld || 0);
+                      const invested = avg * qty;
+                      const current = ltp * qty;
+                      const pnl = current - invested;
+                      const pnlPct = invested > 0 ? ((pnl / invested) * 100) : 0;
+                      const up = pnl >= 0;
+                      const color = SLICE_COLORS[idx % SLICE_COLORS.length];
+                      const hist = priceHistory[h.companyId] || [];
+
+                      return (
+                        <tr key={h.id} className="transition hover:bg-slate-50">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${color}20` }}>
+                                <span className="text-[10px] font-extrabold" style={{ color }}>{(company?.ticker || "?").slice(0, 2)}</span>
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-900">{company?.ticker || h.companyId}</p>
+                                <p className="max-w-[120px] truncate text-[11px] text-slate-400">{company?.name}</p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="metric-value px-4 py-3 text-slate-600">{qty}</td>
+                          <td className="metric-value px-4 py-3 text-slate-500">₹{fmt(avg)}</td>
+                          <td className="metric-value px-4 py-3 text-slate-900">₹{fmt(ltp)}</td>
+                          <td className="px-4 py-3"><Sparkline data={hist} color={up ? "#10b981" : "#ef4444"} /></td>
+                          <td className="metric-value px-4 py-3 text-slate-500">₹{fmt(invested)}</td>
+                          <td className="metric-value px-4 py-3 text-slate-900">₹{fmt(current)}</td>
+                          <td className="px-4 py-3">
+                            <p className={`metric-value text-sm ${up ? "text-emerald-600" : "text-rose-600"}`}>
+                              {up ? "+" : ""}₹{fmt(pnl)}
+                            </p>
+                            <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${up ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                              {up ? "▲" : "▼"} {Math.abs(pnlPct).toFixed(2)}%
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+
+              {activeTab === "orders" && (
+                <table className="min-w-full text-xs">
+                  <thead className="sticky top-0 z-10 bg-slate-50">
+                    <tr>
+                      {["ID", "Stock", "Type", "Qty", "Price", "Total", "Status", "Time"].map((col) => (
+                        <th key={col} className="whitespace-nowrap border-b border-slate-200 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-500">
+                          {col}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {orders.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-400">No order history</td>
+                      </tr>
+                    ) : orders.map((o) => {
+                      const company = companies[o.companyId];
+                      const isBuy = o.orderType === "BUY";
+                      const ok = o.status === "EXECUTED" || o.status === "COMPLETED";
+                      return (
+                        <tr key={o.id} className="transition hover:bg-slate-50">
+                          <td className="metric-value px-4 py-3 text-slate-400">#{o.id}</td>
+                          <td className="px-4 py-3 font-bold text-slate-900">{company?.ticker || o.companyId}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isBuy ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                              {o.orderType}
+                            </span>
+                          </td>
+                          <td className="metric-value px-4 py-3 text-slate-600">{o.quantity}</td>
+                          <td className="metric-value px-4 py-3 text-slate-500">₹{fmt(o.priceAtOrder)}</td>
+                          <td className="metric-value px-4 py-3 text-slate-900">₹{fmt(o.totalValue)}</td>
+                          <td className="px-4 py-3">
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${ok ? "bg-emerald-50 text-emerald-700" : "bg-rose-50 text-rose-700"}`}>
+                              {o.status}
+                            </span>
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-slate-500">
+                            {o.timestamp ? new Date(o.timestamp).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "-"}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
         </div>
       ) : (
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 16, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24 }}>📂</div>
-          <p style={{ fontWeight: 700, color: "#0f172a", margin: 0 }}>No portfolio yet</p>
-          <p style={{ color: "#94a3b8", fontSize: 13, margin: 0 }}>Create one to start tracking your investments</p>
-          <button onClick={() => setShowNewInput(true)} style={{
-            padding: "10px 24px", background: "#10b981", color: "#fff",
-            border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: "pointer"
-          }}>+ Create Portfolio</button>
+        <div className="panel flex min-h-[420px] flex-col items-center justify-center gap-3 p-10 text-center">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-100 text-2xl">📂</div>
+          <p className="text-lg font-bold text-slate-900">No portfolio yet</p>
+          <p className="text-sm text-slate-500">Create one to start tracking your investments</p>
+          <button
+            onClick={() => setShowNewInput(true)}
+            className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-700"
+          >
+            + Create Portfolio
+          </button>
         </div>
       )}
     </div>
