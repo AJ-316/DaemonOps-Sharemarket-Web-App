@@ -3,6 +3,8 @@ package wissen.daemonops.sharemarket.services;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -18,6 +20,9 @@ import wissen.daemonops.sharemarket.repos.CompanyRepo;
 public class CompanyService {
 
     private final CompanyRepo companyRepo;
+    
+    @Autowired
+    private RestTemplate restTemplate;
 
     public CompanyService(CompanyRepo companyRepo) {
         this.companyRepo = companyRepo;
@@ -38,17 +43,14 @@ public class CompanyService {
         company.setTotalSharesIssued(request.getTotalSharesIssued());
         company.setCreatedAt(LocalDateTime.now());
         Company saved = companyRepo.save(company);
-        
-        /*
-        Uncomment this when finally testing or deployed
+
         try {
-            String url = "http://EXCHANGE-SERVICE/init?companyId=" + saved.getId() + "&initialPrice=" + request.getInitialPrice();
-            new RestTemplate().postForObject(url, null, Void.class);
-            // Just for testing will remove it later
+            String url = "http://EXCHANGE-SERVICE/stocks/init?companyId=" + saved.getId()
+                + "&initialPrice=" + request.getInitialPrice();
+            restTemplate.postForObject(url, null, Void.class); // uses the injected one
         } catch (Exception e) {
             throw new RuntimeException("Failed to initialize stock on exchange service: " + e.getMessage());
         }
-        */
         return mapToResponse(saved);
     }
 
