@@ -12,7 +12,6 @@ import wissen.daemonops.sharemarket.dtos.OrderRequest;
 import wissen.daemonops.sharemarket.dtos.OrderResponse;
 import wissen.daemonops.sharemarket.exceptions.TradeRejectedException;
 import wissen.daemonops.sharemarket.models.*;
-import wissen.daemonops.sharemarket.models.Portfolio;
 import wissen.daemonops.sharemarket.repos.OrderRepo;
 import wissen.daemonops.sharemarket.repos.PortfolioRepo;
 import wissen.daemonops.sharemarket.repos.UserHoldingsRepo;
@@ -32,14 +31,14 @@ public class OrderService {
 
         StockPrice stock = priceService.getStockByCompanyId(request.getCompanyId());
 
-        // SELL check — does user have enough shares?
+        // SELL check — scoped to specific portfolio
         if (request.getOrderType() == OrderType.SELL) {
             UserHoldings userHoldings = userHoldingsRepo
-                    .findByUserIdAndCompanyId(userId, request.getCompanyId())
+                    .findByUserIdAndCompanyIdAndPortfolioId(
+                            userId, request.getCompanyId(), request.getPortfolioId())
                     .orElse(null);
 
             if (userHoldings == null || userHoldings.getQuantityHeld() < request.getQuantity()) {
-                // Save rejected order
                 Order rejected = Order.builder()
                         .userId(userId)
                         .companyId(request.getCompanyId())
@@ -52,12 +51,10 @@ public class OrderService {
                         .timestamp(LocalDateTime.now())
                         .build();
                 orderRepo.save(rejected);
-
                 return buildResponse(rejected);
             }
         }
 
-        // Try updating price — this throws if 20% limit breached
         try {
             priceService.updatePriceAfterTrade(request.getCompanyId(), request.getOrderType());
         } catch (TradeRejectedException e) {
@@ -76,12 +73,10 @@ public class OrderService {
             return buildResponse(rejected);
         }
 
-        // Fetch updated price after trade
         StockPrice updatedStock = priceService.getStockByCompanyId(request.getCompanyId());
         BigDecimal totalValue = updatedStock.getCurrentPrice()
                 .multiply(BigDecimal.valueOf(request.getQuantity()));
 
-        // Save executed order
         Order order = Order.builder()
                 .userId(userId)
                 .companyId(request.getCompanyId())
@@ -94,21 +89,23 @@ public class OrderService {
                 .build();
         orderRepo.save(order);
 
-        // Update portfolio
         updatePortfolio(userId, request, updatedStock.getCurrentPrice());
 
         return buildResponse(order);
     }
 
     private void updatePortfolio(Long userId, OrderRequest request, BigDecimal tradePrice) {
+        // FIX: was findByUserIdAndCompanyId — ignored portfolioId, so buying the same
+        // stock in a new portfolio would update the old portfolio's holding instead of
+        // creating a fresh entry in the correct portfolio.
         Optional<UserHoldings> existing = userHoldingsRepo
-                .findByUserIdAndCompanyId(userId, request.getCompanyId());
+                .findByUserIdAndCompanyIdAndPortfolioId(
+                        userId, request.getCompanyId(), request.getPortfolioId());
 
         if (request.getOrderType() == OrderType.BUY) {
             if (existing.isPresent()) {
                 UserHoldings p = existing.get();
                 int newQty = p.getQuantityHeld() + request.getQuantity();
-                // Recalculate average buy price
                 BigDecimal totalCost = p.getAverageBuyPrice()
                         .multiply(BigDecimal.valueOf(p.getQuantityHeld()))
                         .add(tradePrice.multiply(BigDecimal.valueOf(request.getQuantity())));
@@ -119,10 +116,10 @@ public class OrderService {
                 p.setLastUpdated(LocalDateTime.now());
                 userHoldingsRepo.save(p);
             } else {
-                if(portfolioRepo.existsById(request.getPortfolioId())) {
-                    throw new IllegalArgumentException("No such Portfolio found: " + request.getPortfolioId());
+                if (!portfolioRepo.existsById(request.getPortfolioId())) {
+                    throw new IllegalArgumentException(
+                            "No such Portfolio found: " + request.getPortfolioId());
                 }
-
                 UserHoldings p = UserHoldings.builder()
                         .userId(userId)
                         .portfolioId(request.getPortfolioId())
@@ -134,7 +131,6 @@ public class OrderService {
                 userHoldingsRepo.save(p);
             }
         } else {
-            // SELL
             existing.ifPresent(p -> {
                 int newQty = p.getQuantityHeld() - request.getQuantity();
                 if (newQty == 0) {

@@ -22,7 +22,7 @@ public class UserHoldingsController {
     private final PortfolioService portfolioService;
 
     @GetMapping("/holdings/{portfolioId}")
-    public ResponseEntity<List<UserHoldings>> getPortfolio(@RequestHeader("X-User-Id") Long userId, @RequestParam Long portfolioId) {
+    public ResponseEntity<List<UserHoldings>> getPortfolio(@RequestHeader("X-User-Id") Long userId, @PathVariable Long portfolioId) {
         return ResponseEntity.ok(userHoldingsService.getUserPortfolio(userId, portfolioId));
     }
 
@@ -32,7 +32,9 @@ public class UserHoldingsController {
     }
 
     @PostMapping
-    public ResponseEntity<String> createPortfolio(@RequestBody PortfolioDto portfolioDto) {
-        return ResponseEntity.ok(portfolioService.createPortfolio(portfolioDto));
+    public ResponseEntity<String> createPortfolio(
+            @RequestBody PortfolioDto portfolioDto,
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(portfolioService.createPortfolio(portfolioDto, userId));
     }
 }

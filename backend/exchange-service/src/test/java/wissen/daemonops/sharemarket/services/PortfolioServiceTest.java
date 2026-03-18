@@ -2,20 +2,17 @@ package wissen.daemonops.sharemarket.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import wissen.daemonops.sharemarket.dtos.PortfolioDto;
 import wissen.daemonops.sharemarket.models.Portfolio;
@@ -30,11 +27,7 @@ class PortfolioServiceTest {
     @InjectMocks
     private PortfolioService portfolioService;
 
-    @BeforeEach
-    void setUp() {
-        // PortfolioService currently uses field injection; set it explicitly for unit tests.
-        ReflectionTestUtils.setField(portfolioService, "portfolioRepo", portfolioRepo);
-    }
+    private final Long TEST_USER_ID = 2L;
 
     @Test
     void createPortfolio_whenNameAlreadyExists_throwsIllegalArgumentException() {
@@ -42,9 +35,9 @@ class PortfolioServiceTest {
         when(portfolioRepo.existsByNameIgnoreCase("Growth")).thenReturn(true);
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
-                () -> portfolioService.createPortfolio(dto));
+                () -> portfolioService.createPortfolio(dto, TEST_USER_ID));
 
-        assertEquals("Portfolio with name Growth already exists", ex.getMessage());
+        assertEquals("Portfolio 'Growth' already exists", ex.getMessage());
     }
 
     @Test
@@ -52,12 +45,13 @@ class PortfolioServiceTest {
         PortfolioDto dto = new PortfolioDto("LongTerm");
         when(portfolioRepo.existsByNameIgnoreCase("LongTerm")).thenReturn(false);
 
-        String result = portfolioService.createPortfolio(dto);
+        String result = portfolioService.createPortfolio(dto, TEST_USER_ID);
 
         assertEquals("Successfully created Portfolio", result);
         ArgumentCaptor<Portfolio> captor = ArgumentCaptor.forClass(Portfolio.class);
         verify(portfolioRepo).save(captor.capture());
         assertEquals("LongTerm", captor.getValue().getName());
+        assertEquals(TEST_USER_ID, captor.getValue().getUserId());
     }
 
     @Test
@@ -74,4 +68,3 @@ class PortfolioServiceTest {
         assertEquals("Main", result.get(0).getName());
     }
 }
-

@@ -13,4 +13,6 @@ public interface UserHoldingsRepo extends JpaRepository<UserHoldings, Long> {
     Optional<UserHoldings> findByUserIdAndCompanyId(Long userId, Long companyId);
     List<UserHoldings> findByUserId(Long userId);
     List<UserHoldings> findByUserIdAndPortfolioId(Long userId, Long portfolioId);
+    Optional<UserHoldings> findByUserIdAndCompanyIdAndPortfolioId(
+        Long userId, Long companyId, Long portfolioId);
 }
