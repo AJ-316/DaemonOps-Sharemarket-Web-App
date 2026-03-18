@@ -57,15 +57,16 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-        org.springframework.security.core.userdetails.UserDetails userDetails = (org.springframework.security.core.userdetails.UserDetails) authentication
-                .getPrincipal();
+        org.springframework.security.core.userdetails.UserDetails userDetails = 
+                (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
 
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
         return new LoginResponse(
-                jwtService.generateToken(userDetails.getUsername()),
-                user.getRole().name(), user.getUserId());
+                jwtService.generateToken(userDetails.getUsername(), user.getUserId(), user.getRole().name()), // ← updated
+                user.getRole().name(), 
+                user.getUserId());
     }
 
     public String register(RegisterRequestDto dto) {

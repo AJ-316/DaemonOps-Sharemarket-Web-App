@@ -2,14 +2,14 @@ package wissen.daemonops.sharemarket;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.netflix.eureka.server.EnableEurekaServer; // ← ADD THIS
 
 @SpringBootApplication
-@EnableDiscoveryClient
-public class CompanyManagementApplication {
+@EnableEurekaServer
+public class DaemonopsSharemarketApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(CompanyManagementApplication.class, args);
+		SpringApplication.run(DaemonopsSharemarketApplication.class, args);
 	}
 
 }
