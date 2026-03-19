@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import wissen.daemonops.sharemarket.dtos.LoginRequest;
 import wissen.daemonops.sharemarket.dtos.LoginResponse;
 import wissen.daemonops.sharemarket.dtos.RegisterRequestDto;
+import wissen.daemonops.sharemarket.dtos.ResetPasswordRequest;
 import wissen.daemonops.sharemarket.services.AuthService;
 
 @RestController
@@ -57,6 +58,10 @@ public class AuthController {
         }
     }
 
-    
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ResponseEntity.ok("Password reset successfully.");
+    }
 
 }

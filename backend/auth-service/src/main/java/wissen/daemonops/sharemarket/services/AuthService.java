@@ -6,11 +6,13 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import jakarta.transaction.Transactional;
 
 import wissen.daemonops.sharemarket.config.JwtService;
 import wissen.daemonops.sharemarket.dtos.LoginRequest;
 import wissen.daemonops.sharemarket.dtos.LoginResponse;
 import wissen.daemonops.sharemarket.dtos.RegisterRequestDto;
+import wissen.daemonops.sharemarket.dtos.ResetPasswordRequest;
 import wissen.daemonops.sharemarket.models.BankDetails;
 import wissen.daemonops.sharemarket.models.Nominee;
 import wissen.daemonops.sharemarket.models.Role;
@@ -121,5 +123,22 @@ public class AuthService {
         nomineeRepository.save(nominee);
 
         return "User registered successfully";
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        if (!request.newPassword().equals(request.confirmPassword())) {
+            throw new IllegalArgumentException("Passwords do not match");
+        }
+
+        User user = userRepository.findByEmail(request.email())
+            .orElseThrow(() -> new IllegalArgumentException("Email not found"));
+
+        if (!passwordEncoder.matches(request.oldPassword(), user.getPassword())) {
+            throw new IllegalArgumentException("Old password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(request.newPassword()));
+        userRepository.save(user);
     }
 }
