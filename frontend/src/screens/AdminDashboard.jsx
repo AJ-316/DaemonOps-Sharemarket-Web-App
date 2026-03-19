@@ -108,25 +108,48 @@ const AdminDashboard = () => {
                         {companies.length} companies listed
                     </p>
                 </div>
-                <button
-                    onClick={openAdd}
-                    style={{
-                        display: "flex", alignItems: "center", gap: "8px",
-                        padding: "10px 18px",
-                        background: "linear-gradient(135deg, #F59E0B, #D97706)",
-                        color: "#000", fontWeight: "600", fontSize: "13px",
-                        border: "none", borderRadius: "10px", cursor: "pointer",
-                        boxShadow: "0 4px 14px rgba(245,158,11,0.25)",
-                        transition: "box-shadow 0.2s",
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 6px 20px rgba(245,158,11,0.4)"}
-                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 4px 14px rgba(245,158,11,0.25)"}
-                >
-                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Company
-                </button>
+                <div style={{ display: "flex", gap: "10px" }}>
+                    <button
+                        onClick={() => {
+                            localStorage.clear();
+                            window.location.href = "/login";
+                        }}
+                        style={{
+                            display: "flex", alignItems: "center", gap: "8px",
+                            padding: "10px 18px",
+                            background: "transparent",
+                            color: "#EF4444", fontWeight: "600", fontSize: "13px",
+                            border: "1px solid rgba(239,68,68,0.2)", borderRadius: "10px", cursor: "pointer",
+                            transition: "background 0.2s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
+                        onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                    >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        Logout
+                    </button>
+                    <button
+                        onClick={openAdd}
+                        style={{
+                            display: "flex", alignItems: "center", gap: "8px",
+                            padding: "10px 18px",
+                            background: "linear-gradient(135deg, #F59E0B, #D97706)",
+                            color: "#000", fontWeight: "600", fontSize: "13px",
+                            border: "none", borderRadius: "10px", cursor: "pointer",
+                            boxShadow: "0 4px 14px rgba(245,158,11,0.25)",
+                            transition: "box-shadow 0.2s",
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 6px 20px rgba(245,158,11,0.4)"}
+                        onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 4px 14px rgba(245,158,11,0.25)"}
+                    >
+                        <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                        </svg>
+                        Add Company
+                    </button>
+                </div>
             </div>
 
             {error && (

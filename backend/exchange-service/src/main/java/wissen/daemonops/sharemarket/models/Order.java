@@ -29,9 +29,12 @@ public class Order {
     @Column(nullable = false)
     private Long companyId;
 
+    @Column(name = "portfolio_id")
+    private Long portfolioId;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrderType orderType;       // BUY or SELL
+    private OrderType orderType; // BUY or SELL
 
     @Column(nullable = false)
     private Integer quantity;
@@ -40,13 +43,13 @@ public class Order {
     private BigDecimal priceAtOrder;
 
     @Column(nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalValue;      // quantity * priceAtOrder
+    private BigDecimal totalValue; // quantity * priceAtOrder
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private OrderStatus status;        // EXECUTED or REJECTED
+    private OrderStatus status; // EXECUTED or REJECTED
 
-    private String rejectionReason;    // null if executed
+    private String rejectionReason; // null if executed
 
     @Column(nullable = false)
     private LocalDateTime timestamp;

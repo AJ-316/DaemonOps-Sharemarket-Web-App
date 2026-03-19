@@ -2,6 +2,202 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axiosInstance";
 
+const validateEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+const validateMobile = (v) => /^\d{10}$/.test(v);
+const validatePAN = (v) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v);
+const validateAadhaar = (v) => /^\d{12}$/.test(v);
+const isAge18OrAbove = (dob) => {
+  if (!dob) return false;
+  const today = new Date(), birth = new Date(dob);
+  let age = today.getFullYear() - birth.getFullYear();
+  const m = today.getMonth() - birth.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+  return age >= 18;
+};
+
+// --- Custom Theme Calendar Elements ---
+
+const ModernDatePicker = ({ value, onChange, label, error }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [viewDate, setViewDate] = useState(value ? new Date(value) : new Date(2005, 0, 1));
+  const containerRef = React.useRef(null);
+
+  const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  const weekdays = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+  const getDaysInMonth = (month, year) => new Date(year, month + 1, 0).getDate();
+  const getFirstDayOfMonth = (month, year) => {
+    let day = new Date(year, month, 1).getDay();
+    return day === 0 ? 6 : day - 1; // Align Mo-Su
+  };
+
+  const currentYear = viewDate.getFullYear();
+  const currentMonth = viewDate.getMonth();
+  const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+  const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
+
+  const years = [];
+  for (let i = 1940; i <= new Date().getFullYear(); i++) years.push(i);
+
+  const handlePrevMonth = () => setViewDate(new Date(currentYear, currentMonth - 1, 1));
+  const handleNextMonth = () => setViewDate(new Date(currentYear, currentMonth + 1, 1));
+  const handleYearChange = (e) => setViewDate(new Date(parseInt(e.target.value), currentMonth, 1));
+
+  const selectDay = (day) => {
+    const d = new Date(currentYear, currentMonth, day);
+    const dateStr = d.toISOString().split("T")[0];
+    onChange(dateStr);
+    setIsOpen(false);
+  };
+
+  React.useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (containerRef.current && !containerRef.current.contains(e.target)) setIsOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const formattedValue = value ? new Date(value).toLocaleDateString("en-IN", { day: "2-digit", month: "long", year: "numeric" }) : "";
+
+  return (
+    <div ref={containerRef} style={{ position: "relative" }}>
+      <Label>{label}</Label>
+      <div
+        onClick={() => setIsOpen(!isOpen)}
+        style={{ ...inputStyle, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between", border: error ? "1px solid #EF4444" : inputStyle.border }}
+      >
+        <span style={{ color: value ? "#F5F5F5" : "#525252" }}>{formattedValue || "Choose date…"}</span>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" />
+        </svg>
+      </div>
+      <FieldError msg={error} />
+
+      {isOpen && (
+        <div className="custom-calendar-popover" style={{
+          background: "#121212", border: "1px solid #1E1E1E", borderRadius: 20,
+          display: "flex", overflow: "hidden",
+          width: 440, height: 320, boxShadow: "0 24px 64px rgba(0,0,0,0.8)",
+          animation: "fadeSlide 0.2s ease-out"
+        }}>
+          {/* Main Calendar Panel */}
+          <div style={{ flex: 1, padding: 20, borderRight: "1px solid #1E1E1E", position: "relative", zIndex: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <button type="button" onClick={handlePrevMonth} style={{ width: 32, height: 32, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "#1C1C1C", border: "1px solid #262626", color: "#A3A3A3", cursor: "pointer" }}>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M15 19l-7-7 7-7" /></svg>
+              </button>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#F5F5F5", letterSpacing: "0.02em" }}>{months[currentMonth]} {currentYear}</span>
+              <button type="button" onClick={handleNextMonth} style={{ width: 32, height: 32, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", background: "#1C1C1C", border: "1px solid #262626", color: "#A3A3A3", cursor: "pointer" }}>
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5"><path d="M9 5l7 7-7 7" /></svg>
+              </button>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", marginBottom: 10, textAlign: "center" }}>
+              {weekdays.map(day => <span key={day} style={{ fontSize: 11, fontWeight: 700, color: "#404040" }}>{day}</span>)}
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2 }}>
+              {Array(firstDay).fill(null).map((_, i) => <div key={`empty-${i}`} />)}
+              {Array(daysInMonth).fill(null).map((_, i) => {
+                const day = i + 1;
+                // Use local date parts to check for selection
+                const [valY, valM, valD] = value ? value.split("-").map(Number) : [null, null, null];
+                const isSelected = valY === currentYear && valM === (currentMonth + 1) && valD === day;
+
+                return (
+                  <button
+                    key={day}
+                    type="button"
+                    onClick={() => {
+                      const y = currentYear;
+                      const m = String(currentMonth + 1).padStart(2, '0');
+                      const d = String(day).padStart(2, '0');
+                      onChange(`${y}-${m}-${d}`);
+                      setIsOpen(false);
+                    }}
+                    style={{
+                      padding: "10px 0", borderRadius: 10, border: "none",
+                      background: isSelected ? "linear-gradient(135deg, #F59E0B, #D97706)" : "transparent",
+                      color: isSelected ? "#000" : "#A3A3A3",
+                      fontSize: 12, fontWeight: isSelected ? 800 : 500,
+                      cursor: "pointer", transition: "all 0.15s"
+                    }}
+                    onMouseEnter={e => { if (!isSelected) e.target.style.background = "#1C1C1C"; }}
+                    onMouseLeave={e => { if (!isSelected) e.target.style.background = "transparent"; }}
+                  >
+                    {day}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Year Picker Sidebar */}
+          <div className="year-scrollbar" style={{
+            width: 100, overflowY: "auto", background: "#0D0D0D", padding: "10px 0",
+            display: "flex", flexDirection: "column", gap: 2, position: "relative", zIndex: 1
+          }}>
+            {years.slice().reverse().map(y => (
+              <button
+                key={y}
+                type="button"
+                id={`year-btn-${y}`}
+                onClick={() => setViewDate(new Date(y, currentMonth, 1))}
+                style={{
+                  padding: "8px 0", fontSize: 12, border: "none",
+                  background: currentYear === y ? "rgba(245,158,11,0.08)" : "transparent",
+                  color: currentYear === y ? "#F59E0B" : "#525252",
+                  fontWeight: currentYear === y ? 800 : 500,
+                  cursor: "pointer", transition: "all 0.2s"
+                }}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Shared styles and helper components defined outside to prevent re-mounting
+const inputStyle = {
+  width: "100%", padding: "11px 16px", borderRadius: 12,
+  border: "1px solid #2A2A2A", background: "#1C1C1C", color: "#F5F5F5",
+  fontSize: 14, outline: "none", transition: "border 0.2s, box-shadow 0.2s",
+  fontFamily: "inherit", boxSizing: "border-box",
+};
+
+const onFocus = (e) => {
+  e.target.style.border = "1px solid #F59E0B";
+  e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.1)";
+};
+
+const onBlur = (e) => {
+  e.target.style.border = "1px solid #2A2A2A";
+  e.target.style.boxShadow = "none";
+};
+
+const Label = ({ children }) => (
+  <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#A3A3A3", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+    {children}
+  </p>
+);
+
+const FieldError = ({ msg }) => msg ? (
+  <p style={{ margin: "5px 0 0", fontSize: 12, color: "#EF4444" }}>{msg}</p>
+) : null;
+
+const Field = ({ label, error, children }) => (
+  <div style={{ marginBottom: 20 }}>
+    <Label>{label}</Label>
+    {children}
+    <FieldError msg={error} />
+  </div>
+);
+
 const Register = () => {
   const navigate = useNavigate();
 
@@ -35,22 +231,10 @@ const Register = () => {
     setPasswordStrength(strength);
   };
 
-  const getStrengthLabel = () => ["Very Weak","Weak","Fair","Good","Strong","Very Strong"][passwordStrength];
-  const getStrengthColor = () => ["#EF4444","#F97316","#EAB308","#3B82F6","#22C55E","#16A34A"][passwordStrength];
+  const getStrengthLabel = () => ["Very Weak", "Weak", "Fair", "Good", "Strong", "Very Strong"][passwordStrength];
+  const getStrengthColor = () => ["#EF4444", "#F97316", "#EAB308", "#3B82F6", "#22C55E", "#16A34A"][passwordStrength];
 
-  const validateEmail    = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-  const validateMobile   = (v) => /^\d{10}$/.test(v);
-  const validatePAN      = (v) => /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(v);
-  const validateAadhaar  = (v) => /^\d{12}$/.test(v);
-  const isAge18OrAbove   = (dob) => {
-    if (!dob) return false;
-    const today = new Date(), birth = new Date(dob);
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
-    return age >= 18;
-  };
-  const validatePassword        = () => passwordStrength >= 4;
+  const validatePassword = () => passwordStrength >= 4;
   const validateConfirmPassword = (pwd, confirm) => pwd === confirm && pwd !== "";
 
   const isStepValid = () => {
@@ -89,108 +273,91 @@ const Register = () => {
     } finally { setLoading(false); }
   };
 
-  const stepNames = ["Basic Details","Identity Details","Aadhaar Details","Bank Details","Nominee Details","Set Password"];
-
-  // Shared input style helpers
-  const inputStyle = {
-    width: "100%", padding: "11px 16px", borderRadius: 12,
-    border: "1px solid #2A2A2A", background: "#1C1C1C", color: "#F5F5F5",
-    fontSize: 14, outline: "none", transition: "border 0.2s, box-shadow 0.2s",
-    fontFamily: "inherit", boxSizing: "border-box",
-  };
-  const onFocus = (e) => { e.target.style.border = "1px solid #F59E0B"; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.1)"; };
-  const onBlur  = (e) => { e.target.style.border = "1px solid #2A2A2A"; e.target.style.boxShadow = "none"; };
-  const Label   = ({ children }) => <p style={{ margin: "0 0 6px", fontSize: 12, fontWeight: 600, color: "#A3A3A3", textTransform: "uppercase", letterSpacing: "0.05em" }}>{children}</p>;
-  const FieldError = ({ msg }) => msg ? <p style={{ margin: "5px 0 0", fontSize: 12, color: "#EF4444" }}>{msg}</p> : null;
+  const stepNames = ["Basic Details", "Identity Details", "Aadhaar Details", "Bank Details", "Nominee Details", "Set Password"];
 
   const getError = (field) => {
     switch (field) {
-      case "firstName":          return formData.firstName.trim() === "" ? "First name is required" : null;
-      case "email":              return !validateEmail(formData.email) ? "Valid email required" : null;
-      case "mobile":             return !validateMobile(formData.mobile) ? "10-digit mobile required" : null;
-      case "pan":                return !validatePAN(formData.pan) ? "PAN format: ABCDE1234F" : null;
-      case "dob":                return formData.dob.trim() === "" ? "Date of birth required" : !isAge18OrAbove(formData.dob) ? "You must be 18 or older" : null;
-      case "aadhaar":            return !validateAadhaar(formData.aadhaar) ? "12-digit Aadhaar required" : null;
-      case "ifsc":               return formData.ifsc.trim() === "" ? "IFSC required" : null;
-      case "accountNumber":      return formData.accountNumber.trim() === "" ? "Account number required" : null;
-      case "bankName":           return formData.bankName.trim() === "" ? "Bank name required" : null;
-      case "branchName":         return formData.branchName.trim() === "" ? "Branch required" : null;
-      case "chequeFile":         return !formData.chequeFile ? "File required" : null;
-      case "nomineeFirstName":   return formData.nomineeFirstName.trim() === "" ? "First name required" : null;
-      case "nomineeRelationship":return formData.nomineeRelationship.trim() === "" ? "Relationship required" : null;
-      case "nomineeEmail":       return !validateEmail(formData.nomineeEmail) ? "Valid email required" : null;
-      case "nomineePan":         return !validatePAN(formData.nomineePan) ? "PAN format: ABCDE1234F" : null;
-      case "nomineeDob":         return formData.nomineeDob.trim() === "" ? "Date of birth required" : !isAge18OrAbove(formData.nomineeDob) ? "Nominee must be 18 or older" : null;
-      case "password":           return !validatePassword() ? "Password must be at least Strong (4/5)" : null;
-      case "confirmPassword":    return !validateConfirmPassword(formData.password, formData.confirmPassword) ? "Passwords must match" : null;
+      case "firstName": return formData.firstName.trim() === "" ? "First name is required" : null;
+      case "email": return !validateEmail(formData.email) ? "Valid email required" : null;
+      case "mobile": return !validateMobile(formData.mobile) ? "10-digit mobile required" : null;
+      case "pan": return !validatePAN(formData.pan) ? "PAN format: ABCDE1234F" : null;
+      case "dob": return formData.dob.trim() === "" ? "Date of birth required" : !isAge18OrAbove(formData.dob) ? "You must be 18 or older" : null;
+      case "aadhaar": return !validateAadhaar(formData.aadhaar) ? "12-digit Aadhaar required" : null;
+      case "ifsc": return formData.ifsc.trim() === "" ? "IFSC required" : null;
+      case "accountNumber": return formData.accountNumber.trim() === "" ? "Account number required" : null;
+      case "bankName": return formData.bankName.trim() === "" ? "Bank name required" : null;
+      case "branchName": return formData.branchName.trim() === "" ? "Branch required" : null;
+      case "chequeFile": return !formData.chequeFile ? "File required" : null;
+      case "nomineeFirstName": return formData.nomineeFirstName.trim() === "" ? "First name required" : null;
+      case "nomineeRelationship": return formData.nomineeRelationship.trim() === "" ? "Relationship required" : null;
+      case "nomineeEmail": return !validateEmail(formData.nomineeEmail) ? "Valid email required" : null;
+      case "nomineePan": return !validatePAN(formData.nomineePan) ? "PAN format: ABCDE1234F" : null;
+      case "nomineeDob": return formData.nomineeDob.trim() === "" ? "Date of birth required" : !isAge18OrAbove(formData.nomineeDob) ? "Nominee must be 18 or older" : null;
+      case "password": return !validatePassword() ? "Password must be at least Strong (4/5)" : null;
+      case "confirmPassword": return !validateConfirmPassword(formData.password, formData.confirmPassword) ? "Passwords must match" : null;
       default: return null;
     }
   };
 
   const renderStep = () => {
-    const Field = ({ label, field, children }) => (
-      <div style={{ marginBottom: 20 }}>
-        <Label>{label}</Label>
-        {children}
-        <FieldError msg={getError(field)} />
-      </div>
-    );
-
     switch (step) {
       case 1: return (
-        <div>
-          <Field label="First Name *" field="firstName">
+        <div key="step1">
+          <Field label="First Name *" error={getError("firstName")}>
             <input style={inputStyle} type="text" value={formData.firstName} onChange={(e) => updateForm("firstName", e.target.value)} placeholder="John" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Middle Name" field="">
+          <Field label="Middle Name" error={getError("middleName")}>
             <input style={inputStyle} type="text" value={formData.middleName} onChange={(e) => updateForm("middleName", e.target.value)} placeholder="(Optional)" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Last Name" field="">
+          <Field label="Last Name" error={getError("lastName")}>
             <input style={inputStyle} type="text" value={formData.lastName} onChange={(e) => updateForm("lastName", e.target.value)} placeholder="Doe (Optional)" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Email *" field="email">
+          <Field label="Email *" error={getError("email")}>
             <input style={inputStyle} type="email" value={formData.email} onChange={(e) => updateForm("email", e.target.value)} placeholder="john@example.com" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Mobile *" field="mobile">
+          <Field label="Mobile *" error={getError("mobile")}>
             <input style={inputStyle} type="tel" value={formData.mobile} onChange={(e) => updateForm("mobile", e.target.value)} placeholder="9876543210" onFocus={onFocus} onBlur={onBlur} />
           </Field>
         </div>
       );
 
       case 2: return (
-        <div>
-          <Field label="PAN Card Number *" field="pan">
+        <div key="step2">
+          <Field label="PAN Card Number *" error={getError("pan")}>
             <input style={inputStyle} type="text" value={formData.pan} onChange={(e) => updateForm("pan", e.target.value.toUpperCase())} placeholder="ABCDE1234F" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Date of Birth *" field="dob">
-            <input style={{ ...inputStyle, colorScheme: "dark" }} type="date" value={formData.dob} onChange={(e) => updateForm("dob", e.target.value)} onFocus={onFocus} onBlur={onBlur} />
-          </Field>
+          <ModernDatePicker
+            label="Date of Birth *"
+            value={formData.dob}
+            onChange={(val) => updateForm("dob", val)}
+            error={getError("dob")}
+          />
         </div>
       );
 
       case 3: return (
-        <div>
-          <Field label="Aadhaar Number *" field="aadhaar">
+        <div key="step3">
+          <Field label="Aadhaar Number *" error={getError("aadhaar")}>
             <input style={inputStyle} type="text" value={formData.aadhaar} onChange={(e) => updateForm("aadhaar", e.target.value)} placeholder="1234 5678 9012" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Name as on PAN" field="">
+          <Field label="Name as on PAN" error={getError("panName")}>
             <input style={inputStyle} type="text" value={formData.panName} onChange={(e) => updateForm("panName", e.target.value)} placeholder="Enter name as on PAN" onFocus={onFocus} onBlur={onBlur} />
           </Field>
         </div>
       );
 
       case 4: return (
-        <div>
-          <Field label="IFSC Code *" field="ifsc">
+        <div key="step4">
+          <Field label="IFSC Code *" error={getError("ifsc")}>
             <input style={inputStyle} type="text" value={formData.ifsc} onChange={(e) => updateForm("ifsc", e.target.value.toUpperCase())} placeholder="SBIN0001234" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Account Number *" field="accountNumber">
+          <Field label="Account Number *" error={getError("accountNumber")}>
             <input style={inputStyle} type="text" value={formData.accountNumber} onChange={(e) => updateForm("accountNumber", e.target.value)} placeholder="1234567890" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Bank Name *" field="bankName">
+          <Field label="Bank Name *" error={getError("bankName")}>
             <input style={inputStyle} type="text" value={formData.bankName} onChange={(e) => updateForm("bankName", e.target.value)} placeholder="State Bank of India" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Branch Name *" field="branchName">
+          <Field label="Branch Name *" error={getError("branchName")}>
             <input style={inputStyle} type="text" value={formData.branchName} onChange={(e) => updateForm("branchName", e.target.value)} placeholder="MG Road" onFocus={onFocus} onBlur={onBlur} />
           </Field>
           <div style={{ marginBottom: 20 }}>
@@ -204,7 +371,7 @@ const Register = () => {
                 boxShadow: "0 4px 12px rgba(245,158,11,0.25)"
               }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
                 </svg>
                 Choose File
                 <input type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={handleFileChange} style={{ display: "none" }} />
@@ -221,33 +388,36 @@ const Register = () => {
       );
 
       case 5: return (
-        <div>
-          <Field label="Nominee First Name *" field="nomineeFirstName">
+        <div key="step5">
+          <Field label="Nominee First Name *" error={getError("nomineeFirstName")}>
             <input style={inputStyle} type="text" value={formData.nomineeFirstName} onChange={(e) => updateForm("nomineeFirstName", e.target.value)} placeholder="Jane" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Nominee Middle Name" field="">
+          <Field label="Nominee Middle Name" error={getError("nomineeMiddleName")}>
             <input style={inputStyle} type="text" value={formData.nomineeMiddleName} onChange={(e) => updateForm("nomineeMiddleName", e.target.value)} placeholder="(Optional)" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Nominee Last Name" field="">
+          <Field label="Nominee Last Name" error={getError("nomineeLastName")}>
             <input style={inputStyle} type="text" value={formData.nomineeLastName} onChange={(e) => updateForm("nomineeLastName", e.target.value)} placeholder="Doe (Optional)" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Relationship *" field="nomineeRelationship">
+          <Field label="Relationship *" error={getError("nomineeRelationship")}>
             <input style={inputStyle} type="text" value={formData.nomineeRelationship} onChange={(e) => updateForm("nomineeRelationship", e.target.value)} placeholder="Spouse" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Nominee Email *" field="nomineeEmail">
+          <Field label="Nominee Email *" error={getError("nomineeEmail")}>
             <input style={inputStyle} type="email" value={formData.nomineeEmail} onChange={(e) => updateForm("nomineeEmail", e.target.value)} placeholder="jane@example.com" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Nominee PAN *" field="nomineePan">
+          <Field label="Nominee PAN *" error={getError("nomineePan")}>
             <input style={inputStyle} type="text" value={formData.nomineePan} onChange={(e) => updateForm("nomineePan", e.target.value.toUpperCase())} placeholder="ABCDE1234F" onFocus={onFocus} onBlur={onBlur} />
           </Field>
-          <Field label="Nominee Date of Birth *" field="nomineeDob">
-            <input style={{ ...inputStyle, colorScheme: "dark" }} type="date" value={formData.nomineeDob} onChange={(e) => updateForm("nomineeDob", e.target.value)} onFocus={onFocus} onBlur={onBlur} />
-          </Field>
+          <ModernDatePicker
+            label="Nominee Date of Birth *"
+            value={formData.nomineeDob}
+            onChange={(val) => updateForm("nomineeDob", val)}
+            error={getError("nomineeDob")}
+          />
         </div>
       );
 
       case 6: return (
-        <div>
+        <div key="step6">
           <div style={{ marginBottom: 20 }}>
             <Label>Password *</Label>
             <input style={inputStyle} type="password" value={formData.password} onChange={(e) => updateForm("password", e.target.value)} placeholder="Enter strong password" onFocus={onFocus} onBlur={onBlur} />
@@ -263,17 +433,17 @@ const Register = () => {
                 {/* Checklist */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 16px" }}>
                   {[
-                    { label: "8+ characters",    pass: formData.password.length >= 8 },
-                    { label: "Uppercase letter",  pass: /[A-Z]/.test(formData.password) },
-                    { label: "Lowercase letter",  pass: /[a-z]/.test(formData.password) },
-                    { label: "Number",            pass: /[0-9]/.test(formData.password) },
+                    { label: "8+ characters", pass: formData.password.length >= 8 },
+                    { label: "Uppercase letter", pass: /[A-Z]/.test(formData.password) },
+                    { label: "Lowercase letter", pass: /[a-z]/.test(formData.password) },
+                    { label: "Number", pass: /[0-9]/.test(formData.password) },
                     { label: "Special character", pass: /[^a-zA-Z0-9]/.test(formData.password) },
                   ].map(({ label, pass }) => (
                     <span key={label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: pass ? "#22C55E" : "#525252", transition: "color 0.2s" }}>
                       <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                         {pass
-                          ? <path d="M2 6l3 3 5-5" stroke="#22C55E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                          : <circle cx="6" cy="6" r="4" stroke="#525252" strokeWidth="1.2"/>
+                          ? <path d="M2 6l3 3 5-5" stroke="#22C55E" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                          : <circle cx="6" cy="6" r="4" stroke="#525252" strokeWidth="1.2" />
                         }
                       </svg>
                       {label}
@@ -304,8 +474,6 @@ const Register = () => {
 
   return (
     <div style={{
-      minHeight: "100vh",
-      background: "#0A0A0A",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "40px 16px",
       position: "relative",
@@ -322,7 +490,57 @@ const Register = () => {
       <style>{`
         @keyframes fadeSlide { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
         .fade-step { animation: fadeSlide 0.25s ease-out; }
-        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.5) sepia(1) saturate(3) hue-rotate(5deg); }
+        
+        .custom-calendar-popover {
+          position: absolute;
+          z-index: 100;
+          top: -20px;
+          left: calc(100% + 24px);
+        }
+
+        .year-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .year-scrollbar::-webkit-scrollbar-track {
+          background: #0D0D0D;
+        }
+        .year-scrollbar::-webkit-scrollbar-thumb {
+          background: #F59E0B;
+          border-radius: 10px;
+        }
+        
+        @media (max-width: 960px) {
+          .custom-calendar-popover {
+            top: calc(100% + 10px);
+            left: 0;
+            right: auto;
+            width: 320px !important;
+            flex-direction: column !important;
+            height: auto !important;
+          }
+          .year-scrollbar {
+            width: 100% !important;
+            height: 120px !important;
+            flex-direction: row !important;
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            padding: 8px !important;
+          }
+          .year-scrollbar button {
+            padding: 0 16px !important;
+            min-width: 60px !important;
+          }
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator { 
+          filter: invert(0.6) sepia(1) saturate(5) hue-rotate(15deg); 
+          cursor: pointer;
+          opacity: 0.8;
+          transition: opacity 0.2s;
+        }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover {
+          opacity: 1;
+        }
       `}</style>
 
       <div style={{ width: "100%", maxWidth: 560, position: "relative", zIndex: 10 }}>
@@ -335,8 +553,8 @@ const Register = () => {
             display: "flex", alignItems: "center", justifyContent: "center",
             boxShadow: "0 0 24px rgba(245,158,11,0.35)"
           }}>
-            <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#000" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+            <svg width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="#000" strokeWidth="3" strokeLinecap="round">
+              <path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
           </div>
           <h1 style={{ fontSize: 22, fontWeight: 800, color: "#F5F5F5", margin: 0 }}>Create your account</h1>
@@ -358,7 +576,7 @@ const Register = () => {
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
               {stepNames.map((name, i) => {
                 const num = i + 1;
-                const done    = num < step;
+                const done = num < step;
                 const current = num === step;
                 return (
                   <div key={num} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
@@ -368,15 +586,15 @@ const Register = () => {
                       fontSize: 12, fontWeight: 700,
                       border: done || current ? "none" : "1.5px solid #2A2A2A",
                       background: done ? "linear-gradient(135deg, #F59E0B, #D97706)"
-                                : current ? "rgba(245,158,11,0.12)"
-                                : "#1C1C1C",
+                        : current ? "rgba(245,158,11,0.12)"
+                          : "#1C1C1C",
                       color: done ? "#000" : current ? "#F59E0B" : "#525252",
                       boxShadow: current ? "0 0 0 3px rgba(245,158,11,0.15)" : "none",
                       transition: "all 0.3s"
                     }}>
                       {done ? (
                         <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                         </svg>
                       ) : num}
                     </div>
@@ -412,7 +630,7 @@ const Register = () => {
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#2A2A2A"; e.currentTarget.style.color = step === 1 ? "#3A3A3A" : "#A3A3A3"; }}
             >
               <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7"/>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
               </svg>
               Back
             </button>
@@ -435,7 +653,7 @@ const Register = () => {
               {loading ? "Submitting…" : step === 6 ? "Submit" : "Continue"}
               {step < 6 && !loading && (
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
                 </svg>
               )}
             </button>

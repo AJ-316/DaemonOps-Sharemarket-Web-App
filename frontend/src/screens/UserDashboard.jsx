@@ -7,28 +7,28 @@ import axiosPending from "../api/axiosPending";
 const fmt2 = (n) => Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const T = {
-  bg:       "#0A0A0A",
-  surface:  "#161616",
+  bg: "#0A0A0A",
+  surface: "#161616",
   surface2: "#1C1C1C",
-  border:   "#2A2A2A",
-  border2:  "#1E1E1E",
-  gold:     "#F59E0B",
-  goldDim:  "#D97706",
+  border: "#2A2A2A",
+  border2: "#1E1E1E",
+  gold: "#F59E0B",
+  goldDim: "#D97706",
   goldGlow: "rgba(245,158,11,0.1)",
-  text:     "#F5F5F5",
-  textSub:  "#A3A3A3",
-  textDim:  "#737373",
+  text: "#F5F5F5",
+  textSub: "#A3A3A3",
+  textDim: "#737373",
   textMute: "#525252",
-  green:    "#22C55E",
+  green: "#22C55E",
   greenDim: "rgba(34,197,94,0.1)",
   greenBdr: "rgba(34,197,94,0.2)",
-  red:      "#EF4444",
-  redDim:   "rgba(239,68,68,0.1)",
-  redBdr:   "rgba(239,68,68,0.2)",
+  red: "#EF4444",
+  redDim: "rgba(239,68,68,0.1)",
+  redBdr: "rgba(239,68,68,0.2)",
 };
 
 const focusGold = (e) => { e.target.style.border = `1px solid ${T.gold}`; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.1)"; };
-const blurDark  = (e) => { e.target.style.border = `1px solid ${T.border}`; e.target.style.boxShadow = "none"; };
+const blurDark = (e) => { e.target.style.border = `1px solid ${T.border}`; e.target.style.boxShadow = "none"; };
 
 // ── Modal Shell ───────────────────────────────────────────────────────────────
 function Modal({ onClose, children, width = 440 }) {
@@ -40,17 +40,17 @@ function Modal({ onClose, children, width = 440 }) {
     }} onClick={(e) => e.target === e.currentTarget && onClose()}>
       <div style={{
         background: T.surface, borderRadius: 20, width: "100%", maxWidth: width,
-        margin: "0 16px", padding: 28, position: "relative",
+        margin: "0 16px", padding: "40px 28px 28px", position: "relative",
         border: `1px solid ${T.border}`,
         boxShadow: "0 0 0 1px rgba(245,158,11,0.08), 0 32px 64px rgba(0,0,0,0.7)",
         maxHeight: "90vh", overflowY: "auto"
       }}>
         <div style={{ position: "absolute", top: 0, left: 32, right: 32, height: 1, background: "linear-gradient(90deg,transparent,#F59E0B,transparent)", opacity: 0.5 }} />
         <button onClick={onClose} style={{
-          position: "absolute", top: 16, right: 16, width: 28, height: 28,
+          position: "absolute", top: 18, right: 18, width: 28, height: 28,
           borderRadius: "50%", border: `1px solid ${T.border}`, background: T.surface2,
           color: T.textMute, cursor: "pointer", fontSize: 14, fontWeight: 700,
-          display: "flex", alignItems: "center", justifyContent: "center"
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10
         }}>✕</button>
         {children}
       </div>
@@ -71,7 +71,7 @@ function InfoRow({ label, value, bold, color }) {
 function Sparkline({ data, up }) {
   if (!data || data.length < 2) return (
     <svg width="80" height="28" viewBox="0 0 80 28">
-      <line x1="0" y1="14" x2="80" y2="14" stroke={T.border} strokeWidth="1.5" strokeDasharray="3 3"/>
+      <line x1="0" y1="14" x2="80" y2="14" stroke={T.border} strokeWidth="1.5" strokeDasharray="3 3" />
     </svg>
   );
   const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
@@ -82,13 +82,13 @@ function Sparkline({ data, up }) {
   const color = up ? T.green : T.red;
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round" />
     </svg>
   );
 }
 
 // ── Buy Modal ─────────────────────────────────────────────────────────────────
-function BuyModal({ stock, company, onClose }) {
+function BuyModal({ stockId, stocks, company, onClose }) {
   const [step, setStep] = useState("form");
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState(null);
@@ -102,18 +102,19 @@ function BuyModal({ stock, company, onClose }) {
   const [limitPrice, setLimitPrice] = useState("");
   const [walletBalance, setWalletBalance] = useState(null);
 
-  const price = Number(stock.currentPrice);
+  const liveStock = stocks.find(s => s.id === stockId) || {};
+  const price = Number(liveStock.currentPrice || 0);
   const totalNum = price * quantity;
   const total = totalNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const insufficientFunds = orderMode === "market" && walletBalance !== null && totalNum > walletBalance;
 
   useEffect(() => {
-    axiosPortfolio.get("/wallet").then((res) => setWalletBalance(Number(res.data.balance))).catch(() => {});
+    axiosPortfolio.get("/wallet").then((res) => setWalletBalance(Number(res.data.balance))).catch(() => { });
     axiosPortfolio.get("/portfolio").then((res) => {
       const list = res.data || [];
       setPortfolios(list);
       if (list.length === 1) setSelectedPortfolio(list[0]);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const handleCreatePortfolio = async () => {
@@ -141,15 +142,17 @@ function BuyModal({ stock, company, onClose }) {
           setError("Enter a valid limit price."); setLoading(false); return;
         }
         await axiosPending.post("/pending-orders", {
-          companyId: stock.companyId, portfolioId: selectedPortfolio.id,
+          companyId: liveStock.companyId, portfolioId: selectedPortfolio.id,
           type: "LIMIT_BUY", quantity: Number(quantity), triggerPrice: Number(limitPrice),
         });
-        setOrderResponse({ orderId: "PENDING", status: "LIMIT_SET", orderType: "LIMIT_BUY",
-          quantity, priceAtOrder: Number(limitPrice), totalValue: Number(limitPrice) * quantity });
+        setOrderResponse({
+          orderId: "PENDING", status: "LIMIT_SET", orderType: "LIMIT_BUY",
+          quantity, priceAtOrder: Number(limitPrice), totalValue: Number(limitPrice) * quantity
+        });
         setStep("receipt");
       } else {
         const res = await axiosPortfolio.post("/orders", {
-          companyId: stock.companyId, portfolioId: selectedPortfolio.id,
+          companyId: liveStock.companyId, portfolioId: selectedPortfolio.id,
           orderType: "BUY", quantity: Number(quantity),
         });
         setOrderResponse(res.data); setStep("receipt");
@@ -223,16 +226,16 @@ function BuyModal({ stock, company, onClose }) {
         </div>
         {orderMode === "limit" && (
           <div style={{ background: "rgba(245,158,11,0.06)", border: `1px solid rgba(245,158,11,0.2)`, borderRadius: 10, padding: "12px 14px" }}>
-            <p style={{ margin: "0 0 4px", fontSize: 11, color: T.gold, fontWeight: 600 }}>⚡ Auto-buy when price reaches or exceeds:</p>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: T.gold, fontWeight: 600 }}>⚡ Auto-buy when price drops to or below:</p>
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
               <span style={{ fontSize: 14, color: T.gold, fontWeight: 700 }}>₹</span>
-              <input type="number" placeholder={`e.g. ${(price * 1.05).toFixed(2)}`} value={limitPrice}
+              <input type="number" placeholder={`e.g. ${(price * 0.95).toFixed(2)}`} value={limitPrice}
                 onChange={(e) => setLimitPrice(e.target.value)}
                 style={{ flex: 1, border: `1px solid ${T.border}`, background: T.surface2, color: T.text, borderRadius: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, outline: "none", fontFamily: "inherit" }}
                 onFocus={focusGold} onBlur={blurDark}
               />
             </div>
-            <p style={{ margin: "6px 0 0", fontSize: 10, color: T.textDim }}>Current: ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })} · Order triggers when ≥ limit price</p>
+            <p style={{ margin: "6px 0 0", fontSize: 10, color: T.textDim }}>Current: ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })} · Order triggers when price ≤ limit price</p>
           </div>
         )}
       </div>
@@ -301,7 +304,7 @@ function BuyModal({ stock, company, onClose }) {
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <div style={{ width: 52, height: 52, borderRadius: 14, background: T.goldGlow, border: `1px solid rgba(245,158,11,0.2)`, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={T.gold} strokeWidth="2.5">
-            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-2 7h12M10 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm7 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-2 7h12M10 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm7 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z" />
           </svg>
         </div>
         <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: T.text }}>Confirm Purchase</p>
@@ -326,7 +329,7 @@ function BuyModal({ stock, company, onClose }) {
     </Modal>
   );
 
-  const ok = ["EXECUTED","COMPLETED","LIMIT_SET"].includes(orderResponse?.status);
+  const ok = ["EXECUTED", "COMPLETED", "LIMIT_SET"].includes(orderResponse?.status);
   return (
     <Modal onClose={onClose}>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
@@ -366,7 +369,7 @@ const UserDashboard = () => {
   useEffect(() => {
     axiosCompany.get("/companies").then((res) => {
       const map = {}; res.data.forEach((c) => { map[c.id] = c; }); setCompanies(map);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const fetchPrices = useCallback(() => {
@@ -384,7 +387,7 @@ const UserDashboard = () => {
         setPriceRangeMax(maxRounded);
         setPriceFilter((prev) => prev[1] === 100000 ? [0, maxRounded] : prev);
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   useEffect(() => { fetchPrices(); const iv = setInterval(fetchPrices, 1000); return () => clearInterval(iv); }, [fetchPrices]);
@@ -420,6 +423,10 @@ const UserDashboard = () => {
     <div style={{ display: "flex", minHeight: "calc(100vh - 56px)", background: T.bg }}>
       <style>{`
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        *::-webkit-scrollbar { width: 6px; height: 6px; }
+        *::-webkit-scrollbar-track { background: transparent; }
+        *::-webkit-scrollbar-thumb { background: #333; borderRadius: 10px; }
+        *::-webkit-scrollbar-thumb:hover { background: ${T.gold}; }
         input[type=range]{ accent-color: ${T.gold} }
         .stock-row:hover{ background: ${T.surface2} !important }
         .buy-btn:hover{ background: linear-gradient(135deg,${T.gold},${T.goldDim}) !important; color:#000 !important; box-shadow:0 4px 14px rgba(245,158,11,0.3) !important; }
@@ -456,7 +463,7 @@ const UserDashboard = () => {
           </div>
         </div>
 
-        <div style={{ height: 1, background: T.border2, margin: "0 0 20px" }}/>
+        <div style={{ height: 1, background: T.border2, margin: "0 0 20px" }} />
 
         {/* Price buckets */}
         <div style={{ marginBottom: 20 }}>
@@ -487,7 +494,7 @@ const UserDashboard = () => {
             <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: T.text }}>Explore Stocks</h1>
             {lastUpdate && (
               <p style={{ margin: "4px 0 0", fontSize: 12, color: T.textDim, display: "flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.green, display: "inline-block", animation: "pulse 2s infinite" }}/>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: T.green, display: "inline-block", animation: "pulse 2s infinite" }} />
                 <strong style={{ color: T.textSub }}>{filtered.length} Stocks</strong>&nbsp;· Updated {lastUpdate}
               </p>
             )}
@@ -498,7 +505,7 @@ const UserDashboard = () => {
             onFocusCapture={(e) => e.currentTarget.style.borderColor = T.gold}
             onBlurCapture={(e) => e.currentTarget.style.borderColor = T.border}
           >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.textMute} strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={T.textMute} strokeWidth="2"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" /></svg>
             <input type="text" placeholder="Filter table…" value={filterSearch}
               onChange={(e) => setFilterSearch(e.target.value)}
               style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: T.text, width: "100%", fontFamily: "inherit" }}
@@ -565,7 +572,7 @@ const UserDashboard = () => {
                         </div>
                       </td>
                       {/* Sparkline */}
-                      <td style={{ padding: "14px 16px" }}><Sparkline data={hist} up={isUp}/></td>
+                      <td style={{ padding: "14px 16px" }}><Sparkline data={hist} up={isUp} /></td>
                       {/* Price */}
                       <td style={{ padding: "14px 16px" }}>
                         <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: T.text, fontVariantNumeric: "tabular-nums" }}>
@@ -614,7 +621,7 @@ const UserDashboard = () => {
         )}
       </main>
 
-      {buyModal && <BuyModal stock={buyModal.stock} company={buyModal.company} onClose={() => setBuyModal(null)}/>}
+      {buyModal && <BuyModal stockId={buyModal.stock.id} stocks={stocks} company={buyModal.company} onClose={() => setBuyModal(null)} />}
     </div>
   );
 };

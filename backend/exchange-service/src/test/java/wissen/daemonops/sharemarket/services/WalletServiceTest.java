@@ -38,7 +38,7 @@ class WalletServiceTest {
         Wallet result = walletService.createWallet(7L);
 
         assertEquals(7L, result.getUserId());
-        assertEquals(new BigDecimal("10000"), result.getBalance());
+        assertEquals(BigDecimal.ZERO, result.getBalance());
         assertNotNull(result.getCreatedAt());
         assertNotNull(result.getLastUpdated());
 
@@ -59,12 +59,16 @@ class WalletServiceTest {
     }
 
     @Test
-    void getWallet_whenMissing_throwsRuntimeException() {
-        when(walletRepo.findByUserId(99L)).thenReturn(Optional.empty());
+    void getWallet_whenMissing_createsNewWallet() {
+        Long userId = 99L;
+        when(walletRepo.findByUserId(userId)).thenReturn(Optional.empty());
+        when(walletRepo.save(any(Wallet.class))).thenAnswer(i -> i.getArgument(0));
 
-        RuntimeException ex = assertThrows(RuntimeException.class, () -> walletService.getWallet(99L));
+        Wallet result = walletService.getWallet(userId);
 
-        assertTrue(ex.getMessage().contains("Wallet not found"));
+        assertEquals(userId, result.getUserId());
+        assertEquals(BigDecimal.ZERO, result.getBalance());
+        verify(walletRepo).save(any(Wallet.class));
     }
 
     @Test
@@ -111,7 +115,7 @@ class WalletServiceTest {
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
                 () -> walletService.deduct(4L, new BigDecimal("100.00")));
 
-        assertEquals("Insufficient balance", ex.getMessage());
+        assertTrue(ex.getMessage().contains("Insufficient balance. Available: ₹50.00"));
         verify(walletRepo, never()).save(any(Wallet.class));
     }
 
@@ -135,4 +139,3 @@ class WalletServiceTest {
                 .build();
     }
 }
-

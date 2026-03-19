@@ -18,7 +18,7 @@ public class WalletService {
     public Wallet createWallet(Long userId) {
         Wallet wallet = Wallet.builder()
                 .userId(userId)
-                .balance(BigDecimal.ZERO)  // start at 0, user deposits manually
+                .balance(BigDecimal.ZERO) // start at 0, user deposits manually
                 .createdAt(LocalDateTime.now())
                 .lastUpdated(LocalDateTime.now())
                 .build();
@@ -26,7 +26,8 @@ public class WalletService {
     }
 
     // FIX: was orElseThrow → caused 500 if wallet not yet created.
-    // Now auto-creates a ₹0 wallet so GET /wallet never fails.
+    // Now auto-creates a wallet with default initial balance so GET /wallet never
+    // fails.
     public Wallet getWallet(Long userId) {
         return walletRepo.findByUserId(userId)
                 .orElseGet(() -> createWallet(userId));
@@ -46,7 +47,8 @@ public class WalletService {
             throw new IllegalArgumentException("Amount must be greater than 0");
         Wallet wallet = getWallet(userId);
         if (wallet.getBalance().compareTo(amount) < 0)
-            throw new IllegalArgumentException("Insufficient balance. Available: ₹" + wallet.getBalance().toPlainString());
+            throw new IllegalArgumentException(
+                    "Insufficient balance. Available: ₹" + wallet.getBalance().toPlainString());
         wallet.setBalance(wallet.getBalance().subtract(amount));
         wallet.setLastUpdated(LocalDateTime.now());
         return walletRepo.save(wallet);

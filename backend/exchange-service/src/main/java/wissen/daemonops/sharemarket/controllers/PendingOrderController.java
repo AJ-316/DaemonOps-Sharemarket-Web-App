@@ -39,7 +39,11 @@ public class PendingOrderController {
     // Get all active pending orders for user
     @GetMapping
     public ResponseEntity<List<PendingOrder>> getActive(
-            @RequestHeader("X-User-Id") Long userId) {
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestParam(required = false) Long portfolioId) {
+        if (portfolioId != null) {
+            return ResponseEntity.ok(pendingOrderService.getActiveByPortfolio(userId, portfolioId));
+        }
         return ResponseEntity.ok(pendingOrderService.getActive(userId));
     }
 
@@ -61,4 +65,4 @@ public class PendingOrderController {
         notificationRepo.saveAll(unread);
         return ResponseEntity.ok("Marked as read");
     }
-} 
+}

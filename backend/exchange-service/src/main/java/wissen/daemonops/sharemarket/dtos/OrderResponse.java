@@ -13,6 +13,7 @@ import wissen.daemonops.sharemarket.models.OrderType;
 public class OrderResponse {
     private Long orderId;
     private Long companyId;
+    private Long portfolioId;
     private OrderType orderType;
     private Integer quantity;
     private BigDecimal priceAtOrder;

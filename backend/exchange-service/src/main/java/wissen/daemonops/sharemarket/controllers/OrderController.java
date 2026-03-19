@@ -28,7 +28,11 @@ public class OrderController {
 
     @GetMapping("/history")
     public ResponseEntity<List<Order>> getOrderHistory(
-            @RequestHeader("X-User-Id") Long userId) {
+            @RequestHeader("X-User-Id") Long userId,
+            @RequestParam(required = false) Long portfolioId) {
+        if (portfolioId != null) {
+            return ResponseEntity.ok(orderService.getOrderHistoryByPortfolio(userId, portfolioId));
+        }
         return ResponseEntity.ok(orderService.getOrderHistory(userId));
     }
 }

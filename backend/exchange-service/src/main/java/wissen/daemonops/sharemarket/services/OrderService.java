@@ -40,13 +40,15 @@ public class OrderService {
                     .orElse(null);
 
             if (userHoldings == null || userHoldings.getQuantityHeld() < request.getQuantity()) {
+                BigDecimal totalValue = stock.getCurrentPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
                 Order rejected = Order.builder()
                         .userId(userId)
                         .companyId(request.getCompanyId())
+                        .portfolioId(request.getPortfolioId())
                         .orderType(request.getOrderType())
                         .quantity(request.getQuantity())
                         .priceAtOrder(stock.getCurrentPrice())
-                        .totalValue(BigDecimal.ZERO)
+                        .totalValue(totalValue)
                         .status(OrderStatus.REJECTED)
                         .rejectionReason("Insufficient shares to sell")
                         .timestamp(LocalDateTime.now())
@@ -67,31 +69,39 @@ public class OrderService {
                     Order rejected = Order.builder()
                             .userId(userId)
                             .companyId(request.getCompanyId())
+                            .portfolioId(request.getPortfolioId())
                             .orderType(request.getOrderType())
                             .quantity(request.getQuantity())
                             .priceAtOrder(stock.getCurrentPrice())
-                            .totalValue(BigDecimal.ZERO)
+                            .totalValue(estimatedCost)
                             .status(OrderStatus.REJECTED)
-                            .rejectionReason("Insufficient wallet balance. Available: ₹"
-                                    + balance.toPlainString())
+                            .rejectionReason("Insufficient wallet balance. Required: ₹" + estimatedCost.toPlainString()
+                                    + ", Available: ₹" + balance.toPlainString())
                             .timestamp(LocalDateTime.now())
                             .build();
                     orderRepo.save(rejected);
                     return buildResponse(rejected);
                 }
-            } catch (Exception ignored) {}
+            } catch (Exception ignored) {
+            }
         }
 
+        StockPrice updatedStock = priceService.getStockByCompanyId(request.getCompanyId());
+        BigDecimal totalValue = stock.getCurrentPrice().multiply(BigDecimal.valueOf(request.getQuantity()));
+
+        // ── Transaction Logic ──
+        // 1. Calculate price movement (for the NEXT trade)
         try {
             priceService.updatePriceAfterTrade(request.getCompanyId(), request.getOrderType());
         } catch (TradeRejectedException e) {
             Order rejected = Order.builder()
                     .userId(userId)
                     .companyId(request.getCompanyId())
+                    .portfolioId(request.getPortfolioId())
                     .orderType(request.getOrderType())
                     .quantity(request.getQuantity())
                     .priceAtOrder(stock.getCurrentPrice())
-                    .totalValue(BigDecimal.ZERO)
+                    .totalValue(totalValue)
                     .status(OrderStatus.REJECTED)
                     .rejectionReason(e.getMessage())
                     .timestamp(LocalDateTime.now())
@@ -100,25 +110,7 @@ public class OrderService {
             return buildResponse(rejected);
         }
 
-        StockPrice updatedStock = priceService.getStockByCompanyId(request.getCompanyId());
-        BigDecimal totalValue = updatedStock.getCurrentPrice()
-                .multiply(BigDecimal.valueOf(request.getQuantity()));
-
-        Order order = Order.builder()
-                .userId(userId)
-                .companyId(request.getCompanyId())
-                .orderType(request.getOrderType())
-                .quantity(request.getQuantity())
-                .priceAtOrder(updatedStock.getCurrentPrice())
-                .totalValue(totalValue)
-                .status(OrderStatus.EXECUTED)
-                .timestamp(LocalDateTime.now())
-                .build();
-        orderRepo.save(order);
-
-        // ── Update wallet ──────────────────────────────────────────────────────
-        // BUY  → deduct total from wallet
-        // SELL → credit total to wallet
+        // 2. Final balance check & deduction (mandatory)
         try {
             if (request.getOrderType() == OrderType.BUY) {
                 walletService.deduct(userId, totalValue);
@@ -126,11 +118,38 @@ public class OrderService {
                 walletService.credit(userId, totalValue);
             }
         } catch (Exception e) {
-            // Log but don't fail the order — wallet update is best-effort
-            // In production you'd want a transaction rollback here
+            Order rejected = Order.builder()
+                    .userId(userId)
+                    .companyId(request.getCompanyId())
+                    .portfolioId(request.getPortfolioId())
+                    .orderType(request.getOrderType())
+                    .quantity(request.getQuantity())
+                    .priceAtOrder(stock.getCurrentPrice())
+                    .totalValue(totalValue)
+                    .status(OrderStatus.REJECTED)
+                    .rejectionReason(e.getMessage())
+                    .timestamp(LocalDateTime.now())
+                    .build();
+            orderRepo.save(rejected);
+            return buildResponse(rejected);
         }
 
-        updatePortfolio(userId, request, updatedStock.getCurrentPrice());
+        // 3. Save executed order
+        Order order = Order.builder()
+                .userId(userId)
+                .companyId(request.getCompanyId())
+                .portfolioId(request.getPortfolioId())
+                .orderType(request.getOrderType())
+                .quantity(request.getQuantity())
+                .priceAtOrder(stock.getCurrentPrice())
+                .totalValue(totalValue)
+                .status(OrderStatus.EXECUTED)
+                .timestamp(LocalDateTime.now())
+                .build();
+        orderRepo.save(order);
+
+        // 4. Update holdings
+        updatePortfolio(userId, request, stock.getCurrentPrice());
 
         return buildResponse(order);
     }
@@ -186,10 +205,15 @@ public class OrderService {
         return orderRepo.findByUserId(userId);
     }
 
+    public List<Order> getOrderHistoryByPortfolio(Long userId, Long portfolioId) {
+        return orderRepo.findByUserIdAndPortfolioId(userId, portfolioId);
+    }
+
     private OrderResponse buildResponse(Order order) {
         return OrderResponse.builder()
                 .orderId(order.getId())
                 .companyId(order.getCompanyId())
+                .portfolioId(order.getPortfolioId())
                 .orderType(order.getOrderType())
                 .quantity(order.getQuantity())
                 .priceAtOrder(order.getPriceAtOrder())

@@ -10,5 +10,8 @@ import wissen.daemonops.sharemarket.models.Order;
 @Repository
 public interface OrderRepo extends JpaRepository<Order, Long> {
     List<Order> findByUserId(Long userId);
+
+    List<Order> findByUserIdAndPortfolioId(Long userId, Long portfolioId);
+
     List<Order> findByUserIdAndCompanyId(Long userId, Long companyId);
 }

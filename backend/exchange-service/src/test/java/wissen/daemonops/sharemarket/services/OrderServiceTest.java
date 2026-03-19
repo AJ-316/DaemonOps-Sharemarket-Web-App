@@ -42,6 +42,8 @@ class OrderServiceTest {
     private PortfolioRepo portfolioRepo;
     @Mock
     private PriceService priceService;
+    @Mock
+    private WalletService walletService;
 
     @InjectMocks
     private OrderService orderService;
@@ -53,7 +55,7 @@ class OrderServiceTest {
         StockPrice stock = stockPrice(1L, "100.00");
 
         when(priceService.getStockByCompanyId(1L)).thenReturn(stock);
-        when(userHoldingsRepo.findByUserIdAndCompanyId(userId, 1L)).thenReturn(Optional.empty());
+        when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 2L)).thenReturn(Optional.empty());
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderResponse response = orderService.placeOrder(request, userId);
@@ -98,21 +100,23 @@ class OrderServiceTest {
                 .build();
 
         when(priceService.getStockByCompanyId(1L)).thenReturn(beforeTrade, afterTrade);
-        when(userHoldingsRepo.findByUserIdAndCompanyId(userId, 1L)).thenReturn(Optional.of(existing));
+        when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 4L)).thenReturn(Optional.of(existing));
+        when(walletService.getWallet(userId)).thenReturn(
+                wissen.daemonops.sharemarket.models.Wallet.builder().balance(new BigDecimal("10000.00")).build());
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userHoldingsRepo.save(any(UserHoldings.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderResponse response = orderService.placeOrder(request, userId);
 
         assertEquals(OrderStatus.EXECUTED, response.getStatus());
-        assertEquals(new BigDecimal("550.00"), response.getTotalValue());
+        assertEquals(new BigDecimal("500.00"), response.getTotalValue());
 
         ArgumentCaptor<UserHoldings> holdingsCaptor = ArgumentCaptor.forClass(UserHoldings.class);
         verify(userHoldingsRepo).save(holdingsCaptor.capture());
         UserHoldings saved = holdingsCaptor.getValue();
 
         assertEquals(15, saved.getQuantityHeld());
-        assertEquals(new BigDecimal("103.33"), saved.getAverageBuyPrice());
+        assertEquals(new BigDecimal("100.00"), saved.getAverageBuyPrice());
     }
 
     @Test
@@ -124,8 +128,10 @@ class OrderServiceTest {
         StockPrice afterTrade = stockPrice(1L, "102.00");
 
         when(priceService.getStockByCompanyId(1L)).thenReturn(beforeTrade, afterTrade);
-        when(userHoldingsRepo.findByUserIdAndCompanyId(userId, 1L)).thenReturn(Optional.empty());
-        when(portfolioRepo.existsById(5L)).thenReturn(false);
+        when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 5L)).thenReturn(Optional.empty());
+        when(portfolioRepo.existsById(5L)).thenReturn(true);
+        when(walletService.getWallet(userId)).thenReturn(
+                wissen.daemonops.sharemarket.models.Wallet.builder().balance(new BigDecimal("10000.00")).build());
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userHoldingsRepo.save(any(UserHoldings.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -146,8 +152,8 @@ class OrderServiceTest {
         StockPrice afterTrade = stockPrice(1L, "101.00");
 
         when(priceService.getStockByCompanyId(1L)).thenReturn(beforeTrade, afterTrade);
-        when(userHoldingsRepo.findByUserIdAndCompanyId(userId, 1L)).thenReturn(Optional.empty());
-        when(portfolioRepo.existsById(6L)).thenReturn(true);
+        when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 6L)).thenReturn(Optional.empty());
+        when(portfolioRepo.existsById(6L)).thenReturn(false);
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
@@ -172,7 +178,7 @@ class OrderServiceTest {
                 .build();
 
         when(priceService.getStockByCompanyId(1L)).thenReturn(beforeTrade, afterTrade);
-        when(userHoldingsRepo.findByUserIdAndCompanyId(userId, 1L)).thenReturn(Optional.of(existing));
+        when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 7L)).thenReturn(Optional.of(existing));
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         OrderResponse response = orderService.placeOrder(request, userId);

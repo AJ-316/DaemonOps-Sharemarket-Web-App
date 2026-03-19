@@ -18,7 +18,7 @@ const Header = () => {
     if (!localStorage.getItem("token")) return;
     axiosPending.get("/pending-orders/notifications")
       .then((res) => setNotifications(res.data || []))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -38,7 +38,7 @@ const Header = () => {
   const handleMarkRead = () => {
     axiosPending.post("/pending-orders/notifications/read")
       .then(() => { setNotifications([]); setShowNotifs(false); })
-      .catch(() => {});
+      .catch(() => { });
   };
 
   const isActive = (path) => location.pathname === path;
@@ -64,7 +64,7 @@ const Header = () => {
           boxShadow: "0 0 10px rgba(245,158,11,0.3)"
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" strokeWidth="2.5">
-            <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+            <path d="M3 3v18h18" /><path d="m19 9-5 5-4-4-3 3" />
           </svg>
         </div>
         <span style={{ fontWeight: 800, fontSize: 16, color: "#F5F5F5", letterSpacing: "-0.02em" }}>Stocko</span>
@@ -73,18 +73,24 @@ const Header = () => {
       {/* Nav links */}
       {isLoggedIn && (
         <nav style={{ display: "flex", alignItems: "center", gap: 4, marginRight: 24, flexShrink: 0 }}>
-          {[
-            { label: "Explore", path: "/dashboard" },
-            { label: "Investments", path: "/portfolio" },
-          ].map(({ label, path }) => (
-            <Link key={path} to={path} style={{
-              padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
-              textDecoration: "none", transition: "all .15s",
-              color: isActive(path) ? "#F59E0B" : "#737373",
-              background: isActive(path) ? "rgba(245,158,11,0.08)" : "transparent",
-              borderBottom: isActive(path) ? "2px solid #F59E0B" : "2px solid transparent",
-            }}>{label}</Link>
-          ))}
+          {localStorage.getItem("role") === "ADMIN" ? (
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#F59E0B", padding: "6px 14px" }}>
+              Admin Console
+            </span>
+          ) : (
+            [
+              { label: "Explore", path: "/dashboard" },
+              { label: "Investments", path: "/portfolio" },
+            ].map(({ label, path }) => (
+              <Link key={path} to={path} style={{
+                padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600,
+                textDecoration: "none", transition: "all .15s",
+                color: isActive(path) ? "#F59E0B" : "#737373",
+                background: isActive(path) ? "rgba(245,158,11,0.08)" : "transparent",
+                borderBottom: isActive(path) ? "2px solid #F59E0B" : "2px solid transparent",
+              }}>{label}</Link>
+            ))
+          )}
         </nav>
       )}
 
@@ -108,8 +114,8 @@ const Header = () => {
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke={unreadCount > 0 ? "#F59E0B" : "#525252"} strokeWidth="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
               </svg>
               {unreadCount > 0 && (
                 <span style={{
