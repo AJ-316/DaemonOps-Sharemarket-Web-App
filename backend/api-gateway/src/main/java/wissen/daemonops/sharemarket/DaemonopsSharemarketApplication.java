@@ -25,6 +25,11 @@ public class DaemonopsSharemarketApplication {
     RouteLocator myCustomRouteLocator(RouteLocatorBuilder builder) {
         return builder.routes()
 
+                .route("change_password_route", r -> r
+                        .path("/api/auth/change-password")
+                        .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                        .uri("lb://auth-service"))
+
             .route("auth_route", r -> r
                     .path("/api/auth/**")
                     .uri("lb://auth-service"))
