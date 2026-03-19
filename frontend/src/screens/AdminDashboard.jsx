@@ -7,13 +7,12 @@ const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [showModal, setShowModal] = useState(false);
-    const [editTarget, setEditTarget] = useState(null); // null = add, object = edit
+    const [editTarget, setEditTarget] = useState(null);
     const [form, setForm] = useState({
         name: "", ticker: "", sector: "",
         description: "", totalSharesIssued: "", initialPrice: ""
     });
 
-    // ── Fetch all companies ──
     const fetchCompanies = async () => {
         try {
             setLoading(true);
@@ -28,7 +27,6 @@ const AdminDashboard = () => {
 
     useEffect(() => { fetchCompanies(); }, []);
 
-    // ── Open modal ──
     const openAdd = () => {
         setEditTarget(null);
         setForm({ name: "", ticker: "", sector: "", description: "", totalSharesIssued: "", initialPrice: "" });
@@ -48,17 +46,13 @@ const AdminDashboard = () => {
         setShowModal(true);
     };
 
-    // ── Submit (add or edit) ──
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
             if (editTarget) {
                 await axiosCompany.put(`/companies/${editTarget.id}`, form);
             } else {
-                // 1. Add company
                 const res = await axiosCompany.post("/companies", form);
-
-                // 2. Init stock in exchange service
                 await axiosExchange.post(
                     `/stocks/init?companyId=${res.data.id}&initialPrice=${form.initialPrice}`
                 );
@@ -70,7 +64,6 @@ const AdminDashboard = () => {
         }
     };
 
-    // ── Delete ──
     const handleDelete = async (id) => {
         if (!window.confirm("Are you sure you want to delete this company?")) return;
         try {
@@ -82,24 +75,54 @@ const AdminDashboard = () => {
         }
     };
 
-    const inputClass = "w-full px-4 py-2.5 rounded-lg border border-gray-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 outline-none transition text-sm";
-    const labelClass = "block text-sm font-medium text-gray-700 mb-1";
+    const inputStyle = {
+        width: "100%",
+        padding: "10px 14px",
+        borderRadius: "10px",
+        border: "1px solid #2A2A2A",
+        background: "#1C1C1C",
+        color: "#F5F5F5",
+        fontSize: "13px",
+        outline: "none",
+        transition: "border 0.2s, box-shadow 0.2s",
+        fontFamily: "inherit",
+    };
+
+    const handleInputFocus = (e) => {
+        e.target.style.border = "1px solid #F59E0B";
+        e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.1)";
+    };
+    const handleInputBlur = (e) => {
+        e.target.style.border = "1px solid #2A2A2A";
+        e.target.style.boxShadow = "none";
+    };
 
     return (
-        <div className="p-6 max-w-screen-xl mx-auto">
+        <div style={{ padding: "24px", maxWidth: "1280px", margin: "0 auto", minHeight: "100vh", background: "#0A0A0A" }}>
 
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900">Companies</h1>
-                    <p className="text-sm text-gray-500 mt-1">{companies.length} companies listed</p>
+                    <h1 style={{ fontSize: "22px", fontWeight: "700", color: "#F5F5F5" }}>Companies</h1>
+                    <p style={{ fontSize: "13px", color: "#737373", marginTop: "4px" }}>
+                        {companies.length} companies listed
+                    </p>
                 </div>
                 <button
                     onClick={openAdd}
-                    className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700
-                     text-white text-sm font-semibold rounded-lg transition"
+                    style={{
+                        display: "flex", alignItems: "center", gap: "8px",
+                        padding: "10px 18px",
+                        background: "linear-gradient(135deg, #F59E0B, #D97706)",
+                        color: "#000", fontWeight: "600", fontSize: "13px",
+                        border: "none", borderRadius: "10px", cursor: "pointer",
+                        boxShadow: "0 4px 14px rgba(245,158,11,0.25)",
+                        transition: "box-shadow 0.2s",
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 6px 20px rgba(245,158,11,0.4)"}
+                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 4px 14px rgba(245,158,11,0.25)"}
                 >
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                    <svg width="15" height="15" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                     Add Company
@@ -107,56 +130,93 @@ const AdminDashboard = () => {
             </div>
 
             {error && (
-                <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-lg mb-4">
+                <div style={{
+                    background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                    color: "#FCA5A5", fontSize: "13px", padding: "12px 16px",
+                    borderRadius: "10px", marginBottom: "16px"
+                }}>
                     {error}
                 </div>
             )}
 
             {/* Table */}
             {loading ? (
-                <div className="text-center py-20 text-gray-400">Loading...</div>
+                <div style={{ textAlign: "center", padding: "80px 0", color: "#525252" }}>Loading...</div>
             ) : (
-                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-                    <table className="w-full text-sm">
-                        <thead className="bg-gray-50 border-b border-gray-100">
-                            <tr>
+                <div style={{
+                    background: "#161616",
+                    border: "1px solid #2A2A2A",
+                    borderRadius: "16px",
+                    overflow: "hidden",
+                    boxShadow: "0 0 0 1px rgba(245,158,11,0.05)",
+                }}>
+                    <table style={{ width: "100%", fontSize: "13px", borderCollapse: "collapse" }}>
+                        <thead>
+                            <tr style={{ background: "#111111", borderBottom: "1px solid #2A2A2A" }}>
                                 {["Ticker", "Name", "Sector", "Total Shares", "Created At", "Actions"].map((h) => (
-                                    <th key={h} className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                    <th key={h} style={{
+                                        textAlign: "left", padding: "12px 16px",
+                                        fontSize: "11px", fontWeight: "600",
+                                        color: "#F59E0B", textTransform: "uppercase", letterSpacing: "0.08em"
+                                    }}>
                                         {h}
                                     </th>
                                 ))}
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-gray-50">
-                            {companies.map((c) => (
-                                <tr key={c.id} className="hover:bg-gray-50 transition">
-                                    <td className="px-4 py-3">
-                                        <span className="font-mono font-semibold text-emerald-700 bg-emerald-50
-                                     px-2 py-0.5 rounded text-xs">
+                        <tbody>
+                            {companies.map((c, i) => (
+                                <tr key={c.id}
+                                    style={{ borderBottom: "1px solid #1E1E1E", transition: "background 0.15s" }}
+                                    onMouseEnter={(e) => e.currentTarget.style.background = "#1A1A1A"}
+                                    onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}
+                                >
+                                    <td style={{ padding: "12px 16px" }}>
+                                        <span style={{
+                                            fontFamily: "monospace", fontWeight: "700",
+                                            color: "#F59E0B",
+                                            background: "rgba(245,158,11,0.1)",
+                                            border: "1px solid rgba(245,158,11,0.2)",
+                                            padding: "2px 8px", borderRadius: "6px", fontSize: "12px"
+                                        }}>
                                             {c.ticker}
                                         </span>
                                     </td>
-                                    <td className="px-4 py-3 font-medium text-gray-900">{c.name}</td>
-                                    <td className="px-4 py-3 text-gray-500">{c.sector}</td>
-                                    <td className="px-4 py-3 text-gray-500">
+                                    <td style={{ padding: "12px 16px", fontWeight: "500", color: "#F5F5F5" }}>{c.name}</td>
+                                    <td style={{ padding: "12px 16px", color: "#F5F5F5" }}>{c.sector}</td>
+                                    <td style={{ padding: "12px 16px", color: "#F5F5F5" }}>
                                         {Number(c.totalSharesIssued).toLocaleString()}
                                     </td>
-                                    <td className="px-4 py-3 text-gray-400 text-xs">
+                                    <td style={{ padding: "12px 16px", color: "#A3A3A3", fontSize: "12px" }}>
                                         {new Date(c.createdAt).toLocaleDateString()}
                                     </td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex items-center gap-2">
+                                    <td style={{ padding: "12px 16px" }}>
+                                        <div style={{ display: "flex", gap: "8px" }}>
                                             <button
                                                 onClick={() => openEdit(c)}
-                                                className="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50
-                                   hover:bg-blue-100 rounded-lg transition"
+                                                style={{
+                                                    padding: "5px 12px", fontSize: "12px", fontWeight: "500",
+                                                    color: "#93C5FD",
+                                                    background: "rgba(59,130,246,0.1)",
+                                                    border: "1px solid rgba(59,130,246,0.2)",
+                                                    borderRadius: "8px", cursor: "pointer", transition: "background 0.15s"
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(59,130,246,0.18)"}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = "rgba(59,130,246,0.1)"}
                                             >
                                                 Edit
                                             </button>
                                             <button
                                                 onClick={() => handleDelete(c.id)}
-                                                className="px-3 py-1.5 text-xs font-medium text-red-600 bg-red-50
-                                   hover:bg-red-100 rounded-lg transition"
+                                                style={{
+                                                    padding: "5px 12px", fontSize: "12px", fontWeight: "500",
+                                                    color: "#FCA5A5",
+                                                    background: "rgba(239,68,68,0.1)",
+                                                    border: "1px solid rgba(239,68,68,0.2)",
+                                                    borderRadius: "8px", cursor: "pointer", transition: "background 0.15s"
+                                                }}
+                                                onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239,68,68,0.18)"}
+                                                onMouseLeave={(e) => e.currentTarget.style.background = "rgba(239,68,68,0.1)"}
                                             >
                                                 Delete
                                             </button>
@@ -166,7 +226,7 @@ const AdminDashboard = () => {
                             ))}
                             {companies.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-12 text-gray-400">
+                                    <td colSpan={6} style={{ textAlign: "center", padding: "48px", color: "#525252" }}>
                                         No companies found
                                     </td>
                                 </tr>
@@ -178,16 +238,38 @@ const AdminDashboard = () => {
 
             {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-6">
+                <div style={{
+                    position: "fixed", inset: 0,
+                    background: "rgba(0,0,0,0.75)",
+                    backdropFilter: "blur(4px)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    zIndex: 50, padding: "16px"
+                }}>
+                    <div style={{
+                        background: "#161616",
+                        border: "1px solid #2A2A2A",
+                        borderRadius: "20px",
+                        width: "100%", maxWidth: "520px",
+                        padding: "28px",
+                        boxShadow: "0 0 0 1px rgba(245,158,11,0.08), 0 32px 64px rgba(0,0,0,0.7)",
+                        position: "relative"
+                    }}>
+                        {/* Gold top accent */}
+                        <div style={{
+                            position: "absolute", top: 0, left: "32px", right: "32px", height: "1px",
+                            background: "linear-gradient(90deg, transparent, #F59E0B, transparent)",
+                            opacity: 0.5, borderRadius: "999px"
+                        }} />
 
-                        <div className="flex items-center justify-between mb-5">
-                            <h2 className="text-lg font-bold text-gray-900">
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "24px" }}>
+                            <h2 style={{ fontSize: "17px", fontWeight: "700", color: "#F5F5F5" }}>
                                 {editTarget ? "Edit Company" : "Add Company"}
                             </h2>
                             <button
                                 onClick={() => setShowModal(false)}
-                                className="text-gray-400 hover:text-gray-600 transition"
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "#525252", transition: "color 0.2s" }}
+                                onMouseEnter={(e) => e.currentTarget.style.color = "#A3A3A3"}
+                                onMouseLeave={(e) => e.currentTarget.style.color = "#525252"}
                             >
                                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -195,99 +277,140 @@ const AdminDashboard = () => {
                             </button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
+                        <form onSubmit={handleSubmit}>
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
                                 <div>
-                                    <label className={labelClass}>Company Name *</label>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: "500", color: "#A3A3A3", marginBottom: "6px" }}>
+                                        Company Name *
+                                    </label>
                                     <input
                                         type="text"
                                         value={form.name}
                                         onChange={(e) => setForm({ ...form, name: e.target.value })}
-                                        className={inputClass}
+                                        style={inputStyle}
                                         placeholder="Reliance Industries"
+                                        onFocus={handleInputFocus}
+                                        onBlur={handleInputBlur}
                                         required
                                     />
                                 </div>
                                 <div>
-                                    <label className={labelClass}>Ticker *</label>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: "500", color: "#A3A3A3", marginBottom: "6px" }}>
+                                        Ticker *
+                                    </label>
                                     <input
                                         type="text"
                                         value={form.ticker}
                                         onChange={(e) => setForm({ ...form, ticker: e.target.value.toUpperCase() })}
-                                        className={inputClass}
+                                        style={{
+                                            ...inputStyle,
+                                            ...(editTarget ? { color: "#525252", cursor: "not-allowed" } : {})
+                                        }}
                                         placeholder="RELIANCE"
-                                        disabled={!!editTarget} // ticker is immutable
+                                        disabled={!!editTarget}
+                                        onFocus={handleInputFocus}
+                                        onBlur={handleInputBlur}
                                         required
                                     />
                                     {editTarget && (
-                                        <p className="text-xs text-gray-400 mt-1">Ticker cannot be changed</p>
+                                        <p style={{ fontSize: "11px", color: "#525252", marginTop: "4px" }}>Ticker cannot be changed</p>
                                     )}
                                 </div>
                             </div>
 
-                            <div>
-                                <label className={labelClass}>Sector *</label>
+                            <div style={{ marginBottom: "14px" }}>
+                                <label style={{ display: "block", fontSize: "12px", fontWeight: "500", color: "#A3A3A3", marginBottom: "6px" }}>
+                                    Sector *
+                                </label>
                                 <input
                                     type="text"
                                     value={form.sector}
                                     onChange={(e) => setForm({ ...form, sector: e.target.value })}
-                                    className={inputClass}
+                                    style={inputStyle}
                                     placeholder="Energy"
+                                    onFocus={handleInputFocus}
+                                    onBlur={handleInputBlur}
                                     required
                                 />
                             </div>
 
-                            <div>
-                                <label className={labelClass}>Description</label>
+                            <div style={{ marginBottom: "14px" }}>
+                                <label style={{ display: "block", fontSize: "12px", fontWeight: "500", color: "#A3A3A3", marginBottom: "6px" }}>
+                                    Description
+                                </label>
                                 <textarea
                                     value={form.description}
                                     onChange={(e) => setForm({ ...form, description: e.target.value })}
-                                    className={`${inputClass} resize-none`}
+                                    style={{ ...inputStyle, resize: "none" }}
                                     rows={3}
                                     placeholder="Brief company description..."
+                                    onFocus={handleInputFocus}
+                                    onBlur={handleInputBlur}
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "24px" }}>
                                 <div>
-                                    <label className={labelClass}>Total Shares Issued *</label>
+                                    <label style={{ display: "block", fontSize: "12px", fontWeight: "500", color: "#A3A3A3", marginBottom: "6px" }}>
+                                        Total Shares Issued *
+                                    </label>
                                     <input
                                         type="number"
                                         value={form.totalSharesIssued}
                                         onChange={(e) => setForm({ ...form, totalSharesIssued: e.target.value })}
-                                        className={inputClass}
+                                        style={inputStyle}
                                         placeholder="1000000"
+                                        onFocus={handleInputFocus}
+                                        onBlur={handleInputBlur}
                                         required
                                     />
                                 </div>
                                 {!editTarget && (
                                     <div>
-                                        <label className={labelClass}>Initial Price (₹) *</label>
+                                        <label style={{ display: "block", fontSize: "12px", fontWeight: "500", color: "#A3A3A3", marginBottom: "6px" }}>
+                                            Initial Price (₹) *
+                                        </label>
                                         <input
                                             type="number"
                                             value={form.initialPrice}
                                             onChange={(e) => setForm({ ...form, initialPrice: e.target.value })}
-                                            className={inputClass}
+                                            style={inputStyle}
                                             placeholder="100.00"
+                                            onFocus={handleInputFocus}
+                                            onBlur={handleInputBlur}
                                             required
                                         />
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex justify-end gap-3 pt-2">
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="px-5 py-2.5 text-sm font-medium text-gray-600 border border-gray-200
-                             rounded-lg hover:bg-gray-50 transition"
+                                    style={{
+                                        padding: "10px 20px", fontSize: "13px", fontWeight: "500",
+                                        color: "#A3A3A3", background: "transparent",
+                                        border: "1px solid #2A2A2A", borderRadius: "10px",
+                                        cursor: "pointer", transition: "border-color 0.2s, color 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#3A3A3A"; e.currentTarget.style.color = "#F5F5F5"; }}
+                                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#2A2A2A"; e.currentTarget.style.color = "#A3A3A3"; }}
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="px-5 py-2.5 text-sm font-semibold text-white bg-emerald-600
-                             hover:bg-emerald-700 rounded-lg transition"
+                                    style={{
+                                        padding: "10px 20px", fontSize: "13px", fontWeight: "600",
+                                        color: "#000",
+                                        background: "linear-gradient(135deg, #F59E0B, #D97706)",
+                                        border: "none", borderRadius: "10px", cursor: "pointer",
+                                        boxShadow: "0 4px 14px rgba(245,158,11,0.25)",
+                                        transition: "box-shadow 0.2s"
+                                    }}
+                                    onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 6px 20px rgba(245,158,11,0.4)"}
+                                    onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 4px 14px rgba(245,158,11,0.25)"}
                                 >
                                     {editTarget ? "Save Changes" : "Add Company"}
                                 </button>

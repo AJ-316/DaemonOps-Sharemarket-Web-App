@@ -19,7 +19,7 @@ function TradingViewWidget() {
       "width": "100%",
       "height": "100%",
       "locale": "en",
-      "colorTheme": "light",
+      "colorTheme": "dark",
       "autosize": false,
       "showVolume": false,
       "showMA": false,
@@ -34,7 +34,7 @@ function TradingViewWidget() {
       "valuesTracking": "1",
       "changeMode": "price-and-percent",
       "chartType": "area",
-      "maLineColor": "#2962FF",
+      "maLineColor": "#F59E0B",
       "maLineWidth": 1,
       "maLength": 9,
       "headerFontSize": "medium",
@@ -46,8 +46,8 @@ function TradingViewWidget() {
   }, []);
 
   return (
-    <div className="tradingview-widget-container w-full h-full" ref={container}>
-      <div className="tradingview-widget-container__widget w-full h-full" />
+    <div className="tradingview-widget-container" style={{ width: "100%", height: "100%" }} ref={container}>
+      <div className="tradingview-widget-container__widget" style={{ width: "100%", height: "100%" }} />
     </div>
   );
 }
@@ -90,98 +90,199 @@ const Home = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white font-sans">
+    <div style={{ background: "#0A0A0A", fontFamily: "sans-serif" }}>
+
+      {/* Grid texture overlay */}
+      <div style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        backgroundImage: `linear-gradient(rgba(245,158,11,0.03) 1px, transparent 1px),
+                          linear-gradient(90deg, rgba(245,158,11,0.03) 1px, transparent 1px)`,
+        backgroundSize: "40px 40px"
+      }} />
 
       {/* ── Hero ── */}
-      <section className="max-w-screen-xl mx-auto px-6 pt-16 pb-12 grid lg:grid-cols-2 gap-12 items-center">
+      <section style={{
+        maxWidth: "1280px", margin: "0 auto", padding: "72px 24px 56px",
+        display: "grid", gridTemplateColumns: "1fr 1fr", gap: "56px",
+        alignItems: "center", position: "relative", zIndex: 1
+      }}>
 
         {/* Left */}
         <div>
-          <div className="inline-flex items-center gap-2 bg-emerald-50 border border-emerald-100
-                          text-emerald-700 text-xs font-medium px-3 py-1.5 rounded-full mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          {/* Live badge */}
+          <div style={{
+            display: "inline-flex", alignItems: "center", gap: "8px",
+            background: "rgba(245,158,11,0.08)",
+            border: "1px solid rgba(245,158,11,0.2)",
+            color: "#F59E0B", fontSize: "12px", fontWeight: "500",
+            padding: "6px 14px", borderRadius: "999px", marginBottom: "24px"
+          }}>
+            <span style={{
+              width: "6px", height: "6px", borderRadius: "50%",
+              background: "#F59E0B",
+              boxShadow: "0 0 6px #F59E0B",
+              animation: "pulse 2s infinite"
+            }} />
             NSE &amp; BSE Live · Market Open
           </div>
 
-          <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-5">
+          <h1 style={{
+            fontSize: "48px", fontWeight: "800", lineHeight: 1.15,
+            color: "#F5F5F5", marginBottom: "20px", letterSpacing: "-0.02em"
+          }}>
             Invest smarter.<br />
-            <span className="text-emerald-600">Trade with confidence.</span>
+            <span style={{
+              background: "linear-gradient(135deg, #F59E0B, #FBBF24)",
+              WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+            }}>
+              Trade with confidence.
+            </span>
           </h1>
 
-          <p className="text-gray-500 text-base leading-relaxed max-w-md mb-8">
+          <p style={{
+            color: "#A3A3A3", fontSize: "15px", lineHeight: 1.7,
+            maxWidth: "420px", marginBottom: "32px"
+          }}>
             Open a free demat account in minutes. Stocks, F&amp;O, IPOs and
-            mutual funds - all from one platform built for Indian markets.
+            mutual funds — all from one platform built for Indian markets.
           </p>
 
-          <div className="flex flex-wrap gap-3">
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
             <button
               onClick={() => navigate("/register")}
-              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white text-sm
-                         font-semibold rounded-xl transition-all shadow-md shadow-emerald-100
-                         active:scale-[0.98]"
+              style={{
+                padding: "13px 28px",
+                background: "linear-gradient(135deg, #F59E0B, #D97706)",
+                color: "#000", fontSize: "14px", fontWeight: "700",
+                border: "none", borderRadius: "12px", cursor: "pointer",
+                boxShadow: "0 4px 20px rgba(245,158,11,0.3)",
+                transition: "box-shadow 0.2s, transform 0.1s",
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 6px 28px rgba(245,158,11,0.45)"}
+              onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 4px 20px rgba(245,158,11,0.3)"}
+              onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.98)"}
+              onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
             >
               Open Free Account
             </button>
             <button
               onClick={() => navigate("/login")}
-              className="px-6 py-3 border border-gray-200 hover:border-gray-300 text-gray-700
-                         text-sm font-medium rounded-xl transition hover:bg-gray-50"
+              style={{
+                padding: "13px 28px",
+                border: "1px solid #2A2A2A", background: "transparent",
+                color: "#A3A3A3", fontSize: "14px", fontWeight: "500",
+                borderRadius: "12px", cursor: "pointer",
+                transition: "border-color 0.2s, color 0.2s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#F59E0B"; e.currentTarget.style.color = "#F5F5F5"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "#2A2A2A"; e.currentTarget.style.color = "#A3A3A3"; }}
             >
               Sign In
             </button>
           </div>
 
-          <p className="text-xs text-gray-400 mt-4">
+          <p style={{ fontSize: "12px", color: "#525252", marginTop: "16px" }}>
             No charges · Paperless KYC · Takes 5 minutes
           </p>
         </div>
 
         {/* Right — TradingView */}
-        <div className="w-full h-[380px] rounded-2xl overflow-hidden border border-gray-100 shadow-sm">
+        <div style={{
+          width: "100%", height: "380px", borderRadius: "20px",
+          overflow: "hidden",
+          border: "1px solid #2A2A2A",
+          boxShadow: "0 0 0 1px rgba(245,158,11,0.06), 0 24px 48px rgba(0,0,0,0.5)"
+        }}>
           <TradingViewWidgetMemo />
         </div>
       </section>
 
       {/* ── Stats ── */}
-      <section className="bg-emerald-600">
-        <div className="max-w-screen-xl mx-auto px-6 py-10 grid grid-cols-2 md:grid-cols-4 gap-6">
+      <section style={{
+        background: "#111111",
+        borderTop: "1px solid #1E1E1E",
+        borderBottom: "1px solid #1E1E1E",
+        position: "relative", zIndex: 1,
+      }}>
+        {/* Gold top shimmer */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, right: 0, height: "1px",
+          background: "linear-gradient(90deg, transparent, rgba(245,158,11,0.4), transparent)"
+        }} />
+        <div style={{
+          maxWidth: "1280px", margin: "0 auto", padding: "40px 24px",
+          display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "24px"
+        }}>
           {stats.map((s) => (
-            <div key={s.label} className="text-center">
-              <p className="text-3xl font-bold text-white">{s.value}</p>
-              <p className="text-emerald-100 text-sm mt-1">{s.label}</p>
+            <div key={s.label} style={{ textAlign: "center" }}>
+              <p style={{
+                fontSize: "32px", fontWeight: "800", letterSpacing: "-0.02em",
+                background: "linear-gradient(135deg, #F59E0B, #FBBF24)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent"
+              }}>{s.value}</p>
+              <p style={{ color: "#737373", fontSize: "13px", marginTop: "4px" }}>{s.label}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* ── Features ── */}
-      <section className="bg-gray-50 py-20">
-        <div className="max-w-screen-xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-gray-900 mb-3">
+      <section style={{
+        background: "#0D0D0D", padding: "80px 24px",
+        position: "relative", zIndex: 1
+      }}>
+        <div style={{ maxWidth: "1280px", margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: "48px" }}>
+            <h2 style={{
+              fontSize: "30px", fontWeight: "800", color: "#F5F5F5",
+              marginBottom: "12px", letterSpacing: "-0.02em"
+            }}>
               Everything you need to trade
             </h2>
-            <p className="text-gray-500 max-w-md mx-auto text-sm">
+            <p style={{ color: "#737373", maxWidth: "400px", margin: "0 auto", fontSize: "14px", lineHeight: 1.6 }}>
               Powerful tools for first-time investors and seasoned traders alike.
             </p>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}>
             {features.map((f) => (
               <div
                 key={f.title}
-                className="bg-white rounded-2xl p-6 border border-gray-100
-                           hover:shadow-md hover:-translate-y-1 transition-all duration-200"
+                style={{
+                  background: "#161616",
+                  borderRadius: "18px", padding: "24px",
+                  border: "1px solid #2A2A2A",
+                  transition: "border-color 0.2s, transform 0.2s, box-shadow 0.2s",
+                  cursor: "default",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(245,158,11,0.3)";
+                  e.currentTarget.style.transform = "translateY(-4px)";
+                  e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.4), 0 0 0 1px rgba(245,158,11,0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "#2A2A2A";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}
               >
-                <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center
-                                justify-center text-emerald-600 mb-4">
+                <div style={{
+                  width: "40px", height: "40px",
+                  background: "rgba(245,158,11,0.1)",
+                  border: "1px solid rgba(245,158,11,0.2)",
+                  borderRadius: "12px",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  marginBottom: "16px"
+                }}>
                   <svg width="20" height="20" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor" strokeWidth="1.8">
+                    stroke="#F59E0B" strokeWidth="1.8">
                     {f.icon}
                   </svg>
                 </div>
-                <h3 className="text-gray-900 font-semibold text-sm mb-1.5">{f.title}</h3>
-                <p className="text-gray-400 text-xs leading-relaxed">{f.desc}</p>
+                <h3 style={{ color: "#F5F5F5", fontWeight: "600", fontSize: "14px", marginBottom: "6px" }}>
+                  {f.title}
+                </h3>
+                <p style={{ color: "#737373", fontSize: "13px", lineHeight: 1.6 }}>{f.desc}</p>
               </div>
             ))}
           </div>
@@ -189,26 +290,65 @@ const Home = () => {
       </section>
 
       {/* ── CTA ── */}
-      <section className="bg-slate-950 py-20 text-center px-6">
-        <h2 className="text-3xl font-bold text-white mb-4">
+      <section style={{
+        background: "#0A0A0A", padding: "80px 24px",
+        textAlign: "center", position: "relative", zIndex: 1,
+        borderTop: "1px solid #1E1E1E",
+      }}>
+        {/* Ambient glow */}
+        <div style={{
+          position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)",
+          width: "500px", height: "200px", pointerEvents: "none",
+          background: "radial-gradient(ellipse, rgba(245,158,11,0.07) 0%, transparent 70%)"
+        }} />
+
+        <h2 style={{
+          fontSize: "32px", fontWeight: "800", color: "#F5F5F5",
+          marginBottom: "16px", letterSpacing: "-0.02em", position: "relative"
+        }}>
           Start investing today.
         </h2>
-        <p className="text-slate-400 text-sm max-w-sm mx-auto mb-8">
+        <p style={{
+          color: "#737373", fontSize: "14px",
+          maxWidth: "340px", margin: "0 auto 32px", lineHeight: 1.6, position: "relative"
+        }}>
           Join 2.4 million traders who trust Stocko. Open your account in under 5 minutes.
         </p>
         <button
           onClick={() => navigate("/register")}
-          className="px-7 py-3.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold
-                     text-sm rounded-xl transition shadow-lg shadow-emerald-900/30
-                     active:scale-[0.98]"
+          style={{
+            padding: "14px 32px",
+            background: "linear-gradient(135deg, #F59E0B, #D97706)",
+            color: "#000", fontWeight: "700", fontSize: "14px",
+            border: "none", borderRadius: "12px", cursor: "pointer",
+            boxShadow: "0 4px 24px rgba(245,158,11,0.35)",
+            transition: "box-shadow 0.2s, transform 0.1s",
+            position: "relative"
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.boxShadow = "0 8px 32px rgba(245,158,11,0.5)"}
+          onMouseLeave={(e) => e.currentTarget.style.boxShadow = "0 4px 24px rgba(245,158,11,0.35)"}
+          onMouseDown={(e) => e.currentTarget.style.transform = "scale(0.98)"}
+          onMouseUp={(e) => e.currentTarget.style.transform = "scale(1)"}
         >
           Open Free Account →
         </button>
-        <p className="text-slate-600 text-xs mt-4">
+        <p style={{ color: "#3A3A3A", fontSize: "12px", marginTop: "16px", position: "relative" }}>
           No credit card · SEBI Registered · 256-bit encrypted
         </p>
       </section>
 
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        @media (max-width: 1024px) {
+          section:first-of-type { grid-template-columns: 1fr !important; }
+        }
+        @media (max-width: 768px) {
+          div[style*="repeat(4, 1fr)"] { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 };
