@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import axiosCompany from "../api/axiosCompany";
 import axiosExchange from "../api/axiosExchange";
 import axiosPortfolio from "../api/axiosPortfolio";
@@ -355,6 +356,7 @@ function BuyModal({ stockId, stocks, company, onClose }) {
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 const UserDashboard = () => {
+  const navigate = useNavigate();
   const [stocks, setStocks] = useState([]);
   const [companies, setCompanies] = useState({});
   const [priceHistory, setPriceHistory] = useState({});
@@ -552,8 +554,8 @@ const UserDashboard = () => {
                   const hist = priceHistory[s.companyId] || [];
                   return (
                     <tr key={s.id} className="stock-row" style={{ borderBottom: `1px solid ${T.border2}`, transition: "background .1s", cursor: "default" }}>
-                      {/* Company */}
-                      <td style={{ padding: "14px 16px" }}>
+                      {/* Company — clickable */}
+                      <td style={{ padding: "14px 16px", cursor: "pointer" }} onClick={() => navigate(`/company/${s.companyId}`)}>
                         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <div style={{
                             width: 38, height: 38, borderRadius: 10, flexShrink: 0,

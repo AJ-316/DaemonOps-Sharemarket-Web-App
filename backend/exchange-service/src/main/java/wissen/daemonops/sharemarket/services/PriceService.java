@@ -60,13 +60,14 @@ public class PriceService {
 
         if (dailyChange > 20) {
             throw new TradeRejectedException(
-                "Daily 20% price limit reached for this stock. No more trades today."
-            );
+                    "Daily 20% price limit reached for this stock. No more trades today.");
         }
 
         // Update high and low
-        if (newPrice.compareTo(stock.getHighToday()) > 0) stock.setHighToday(newPrice);
-        if (newPrice.compareTo(stock.getLowToday()) < 0) stock.setLowToday(newPrice);
+        if (newPrice.compareTo(stock.getHighToday()) > 0)
+            stock.setHighToday(newPrice);
+        if (newPrice.compareTo(stock.getLowToday()) < 0)
+            stock.setLowToday(newPrice);
 
         stock.setCurrentPrice(newPrice);
         stock.setLastUpdated(LocalDateTime.now());
@@ -78,9 +79,8 @@ public class PriceService {
         BigDecimal currentPrice = stock.getCurrentPrice();
         BigDecimal openPrice = stock.getOpenPriceToday();
 
-        // Small random movement max 1%
-        // double movementPercent = (random.nextDouble() * 0.02) - 0.01; // -1% to +1%
-        double movementPercent = (random.nextDouble() * 0.10) - 0.05;
+        // Small random movement max 0.1%
+        double movementPercent = (random.nextDouble() * 0.002) - 0.001; // -0.1% to +0.1%
         BigDecimal movement = currentPrice.multiply(BigDecimal.valueOf(Math.abs(movementPercent)));
 
         BigDecimal newPrice = movementPercent >= 0
@@ -94,10 +94,13 @@ public class PriceService {
                 .multiply(BigDecimal.valueOf(100))
                 .doubleValue();
 
-        if (dailyChange > 20) return; // just skip, dont throw here
+        if (dailyChange > 20)
+            return; // just skip, dont throw here
 
-        if (newPrice.compareTo(stock.getHighToday()) > 0) stock.setHighToday(newPrice);
-        if (newPrice.compareTo(stock.getLowToday()) < 0) stock.setLowToday(newPrice);
+        if (newPrice.compareTo(stock.getHighToday()) > 0)
+            stock.setHighToday(newPrice);
+        if (newPrice.compareTo(stock.getLowToday()) < 0)
+            stock.setLowToday(newPrice);
 
         stock.setCurrentPrice(newPrice);
         stock.setLastUpdated(LocalDateTime.now());

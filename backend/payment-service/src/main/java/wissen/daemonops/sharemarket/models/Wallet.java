@@ -1,15 +1,10 @@
 package wissen.daemonops.sharemarket.models;
 
+import jakarta.persistence.*;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-
-import jakarta.persistence.*;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Data
@@ -18,12 +13,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Builder
 public class Wallet {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false, unique = true)
     private Long userId;
+
+    // email stored here so we can send withdrawal notifications without calling
+    // auth-service
+    @Column
+    private String email;
 
     @Column(nullable = false)
     private BigDecimal balance;

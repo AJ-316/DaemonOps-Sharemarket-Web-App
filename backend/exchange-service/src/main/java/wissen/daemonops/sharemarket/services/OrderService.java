@@ -26,7 +26,7 @@ public class OrderService {
     private final PortfolioRepo portfolioRepo;
     private final StockPriceRepo stockPriceRepo;
     private final PriceService priceService;
-    private final WalletService walletService; // ← added
+    private final PaymentServiceClient paymentServiceClient;
 
     public OrderResponse placeOrder(OrderRequest request, Long userId) {
 
@@ -63,8 +63,7 @@ public class OrderService {
             BigDecimal estimatedCost = stock.getCurrentPrice()
                     .multiply(BigDecimal.valueOf(request.getQuantity()));
             try {
-                walletService.getWallet(userId); // auto-creates if missing
-                BigDecimal balance = walletService.getWallet(userId).getBalance();
+                BigDecimal balance = paymentServiceClient.getBalance(userId);
                 if (balance.compareTo(estimatedCost) < 0) {
                     Order rejected = Order.builder()
                             .userId(userId)
@@ -82,6 +81,22 @@ public class OrderService {
                     orderRepo.save(rejected);
                     return buildResponse(rejected);
                 }
+            } catch (IllegalArgumentException e) {
+                // re-throw as wallet rejection
+                Order rejected = Order.builder()
+                        .userId(userId)
+                        .companyId(request.getCompanyId())
+                        .portfolioId(request.getPortfolioId())
+                        .orderType(request.getOrderType())
+                        .quantity(request.getQuantity())
+                        .priceAtOrder(stock.getCurrentPrice())
+                        .totalValue(estimatedCost)
+                        .status(OrderStatus.REJECTED)
+                        .rejectionReason(e.getMessage())
+                        .timestamp(LocalDateTime.now())
+                        .build();
+                orderRepo.save(rejected);
+                return buildResponse(rejected);
             } catch (Exception ignored) {
             }
         }
@@ -113,9 +128,9 @@ public class OrderService {
         // 2. Final balance check & deduction (mandatory)
         try {
             if (request.getOrderType() == OrderType.BUY) {
-                walletService.deduct(userId, totalValue);
+                paymentServiceClient.deduct(userId, totalValue);
             } else {
-                walletService.credit(userId, totalValue);
+                paymentServiceClient.credit(userId, totalValue);
             }
         } catch (Exception e) {
             Order rejected = Order.builder()

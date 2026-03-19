@@ -16,15 +16,19 @@ import wissen.daemonops.sharemarket.dtos.ResetPasswordRequest;
 import wissen.daemonops.sharemarket.models.User;
 import wissen.daemonops.sharemarket.services.AuthService;
 
+import wissen.daemonops.sharemarket.services.OtpService;
+
 @RestController
 // @CrossOrigin(origins = "http://localhost:5173")
 @RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthService authService;
+    private final OtpService otpService;
 
-    AuthController(AuthService authService) {
+    AuthController(AuthService authService, OtpService otpService) {
         this.authService = authService;
+        this.otpService = otpService;
     }
 
     @PostMapping("/login")
@@ -57,20 +61,52 @@ public class AuthController {
 
     @PostMapping("/change-password")
     public ResponseEntity<?> changePassword(
-        @RequestBody Map<String, String> request,
-        @RequestHeader("X-User-Id") Long userId) {
-    try {
-        User user = authService.getUserById(userId);
-        authService.resetPassword(new ResetPasswordRequest(
-            user.getEmail(),
-            request.get("currentPassword"),
-            request.get("newPassword"),
-            request.get("newPassword")  // frontend already validates match
-        ));
-        return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
-    } catch (Exception e) {
-        return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+            @RequestBody Map<String, String> request,
+            @RequestHeader("X-User-Id") Long userId) {
+        try {
+            User user = authService.getUserById(userId);
+            authService.resetPassword(new ResetPasswordRequest(
+                    user.getEmail(),
+                    request.get("currentPassword"),
+                    request.get("newPassword"),
+                    request.get("newPassword") // frontend already validates match
+            ));
+            return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
     }
-}
+
+    // ── Forgot Password OTP Flow ──────────────────────────────────────────────
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> body) {
+        try {
+            otpService.sendOtp(body.get("email"));
+            return ResponseEntity.ok(Map.of("message", "OTP sent to your email."));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/verify-otp")
+    public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body) {
+        try {
+            otpService.verifyOtp(body.get("email"), body.get("otp"));
+            return ResponseEntity.ok(Map.of("message", "OTP verified."));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password-otp")
+    public ResponseEntity<?> resetPasswordOtp(@RequestBody Map<String, String> body) {
+        try {
+            otpService.resetPasswordWithOtp(body.get("email"), body.get("newPassword"));
+            return ResponseEntity.ok(Map.of("message", "Password reset successfully."));
+        } catch (Exception e) {
+            return ResponseEntity.status(400).body(Map.of("message", e.getMessage()));
+        }
+    }
 
 }

@@ -13,28 +13,28 @@ const fmtCompact = (n) => {
 };
 
 const T = {
-  bg:       "#0A0A0A",
-  surface:  "#161616",
+  bg: "#0A0A0A",
+  surface: "#161616",
   surface2: "#1C1C1C",
-  border:   "#2A2A2A",
-  border2:  "#1E1E1E",
-  gold:     "#F59E0B",
-  goldDim:  "#D97706",
+  border: "#2A2A2A",
+  border2: "#1E1E1E",
+  gold: "#F59E0B",
+  goldDim: "#D97706",
   goldGlow: "rgba(245,158,11,0.1)",
-  text:     "#F5F5F5",
-  textSub:  "#A3A3A3",
-  textDim:  "#737373",
+  text: "#F5F5F5",
+  textSub: "#A3A3A3",
+  textDim: "#737373",
   textMute: "#525252",
-  green:    "#22C55E",
+  green: "#22C55E",
   greenDim: "rgba(34,197,94,0.1)",
   greenBdr: "rgba(34,197,94,0.2)",
-  red:      "#EF4444",
-  redDim:   "rgba(239,68,68,0.1)",
-  redBdr:   "rgba(239,68,68,0.2)",
+  red: "#EF4444",
+  redDim: "rgba(239,68,68,0.1)",
+  redBdr: "rgba(239,68,68,0.2)",
 };
 
 const focusGold = (e) => { e.target.style.border = `1px solid ${T.gold}`; e.target.style.boxShadow = "0 0 0 3px rgba(245,158,11,0.1)"; };
-const blurGold  = (e) => { e.target.style.border = `1px solid ${T.border}`; e.target.style.boxShadow = "none"; };
+const blurGold = (e) => { e.target.style.border = `1px solid ${T.border}`; e.target.style.boxShadow = "none"; };
 
 // ── Change Password Modal ─────────────────────────────────────────────────────
 function ChangePasswordModal({ onClose }) {
@@ -93,7 +93,7 @@ function ChangePasswordModal({ onClose }) {
               />
             </div>
           ))}
-          {error   && <p style={{ margin: 0, fontSize: 12, color: T.red }}>{error}</p>}
+          {error && <p style={{ margin: 0, fontSize: 12, color: T.red }}>{error}</p>}
           {success && <p style={{ margin: 0, fontSize: 12, color: T.green }}>{success}</p>}
         </div>
 
@@ -142,29 +142,35 @@ function SectionCard({ title, children }) {
 const ProfilePage = () => {
   const navigate = useNavigate();
   const userId = localStorage.getItem("userId");
-  const email  = localStorage.getItem("username") || "User";
+  const email = localStorage.getItem("username") || "User";
 
-  const [portfolios, setPortfolios]   = useState([]);
+  const [portfolios, setPortfolios] = useState([]);
   const [allHoldings, setAllHoldings] = useState([]);
-  const [prices, setPrices]           = useState({});
-  const [orders, setOrders]           = useState([]);
-  const [wallet, setWallet]           = useState(null);
-  const [loading, setLoading]         = useState(true);
+  const [prices, setPrices] = useState({});
+  const [orders, setOrders] = useState([]);
+  const [wallet, setWallet] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const [walletModal, setWalletModal]   = useState(null);
+  const [walletModal, setWalletModal] = useState(null);
   const [walletAmount, setWalletAmount] = useState("");
   const [walletLoading, setWalletLoading] = useState(false);
-  const [walletError, setWalletError]   = useState("");
-  const [showPwModal, setShowPwModal]   = useState(false);
+  const [walletError, setWalletError] = useState("");
+  const [showPwModal, setShowPwModal] = useState(false);
 
   const fetchWallet = useCallback(() => {
-    axiosPortfolio.get("/wallet").then((res) => setWallet(res.data)).catch(() => {});
-  }, []);
+    axiosPortfolio.get("/wallet").then((res) => {
+      setWallet(res.data);
+      // Sync email with payment-service for notifications if not set
+      if (res.data && !res.data.email) {
+        axiosPortfolio.post(`/wallet/set-email?email=${email}`).then(fetchWallet).catch(() => { });
+      }
+    }).catch(() => { });
+  }, [email]);
 
   const refreshPrices = useCallback(() => {
     axiosExchange.get("/stocks").then((res) => {
       const map = {}; res.data.forEach((s) => { map[s.companyId] = s; }); setPrices(map);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   useEffect(() => {
@@ -190,7 +196,7 @@ const ProfilePage = () => {
     refreshPrices();
     const iv = setInterval(refreshPrices, 3000);
     return () => clearInterval(iv);
-  }, []);
+  }, [fetchWallet, refreshPrices]);
 
   const totalInvested = orders
     .filter((o) => (o.status === "EXECUTED" || o.status === "COMPLETED") && o.orderType === "BUY")
@@ -201,19 +207,70 @@ const ProfilePage = () => {
     return s + p * Number(h.quantityHeld || 0);
   }, 0);
   const holdingsCost = allHoldings.reduce((s, h) => s + Number(h.averageBuyPrice || 0) * Number(h.quantityHeld || 0), 0);
-  const totalPnl    = totalCurrent - holdingsCost;
+  const totalPnl = totalCurrent - holdingsCost;
   const totalPnlPct = holdingsCost > 0 ? ((totalPnl / holdingsCost) * 100) : 0;
-  const pnlUp       = totalPnl >= 0;
+  const pnlUp = totalPnl >= 0;
 
   const handleWalletAction = async () => {
     const amount = parseFloat(walletAmount);
     if (!amount || amount <= 0) { setWalletError("Enter a valid amount."); return; }
     setWalletLoading(true); setWalletError("");
+
     try {
-      const endpoint = walletModal === "deposit" ? "/wallet/deposit" : "/wallet/withdraw";
-      await axiosPortfolio.post(`${endpoint}?amount=${amount}`);
-      fetchWallet();
-      setWalletModal(null); setWalletAmount("");
+      if (walletModal === "deposit") {
+        // 1. Create Order on Backend
+        const orderRes = await axiosPortfolio.post(`/payment/create-order?amount=${amount}`);
+        console.log("Order Created Response:", orderRes.data);
+
+        const { orderId, amount: rzpAmount, currency, key } = orderRes.data;
+
+        if (!orderId || !key) {
+          throw new Error("Missing orderId or key from payment service.");
+        }
+
+        // 2. Open Razorpay Checkout
+        const options = {
+          key: key,
+          amount: rzpAmount,
+          currency: currency,
+          name: "Stocko Payments",
+          description: "Wallet Add Money",
+          order_id: orderId,
+          handler: async (response) => {
+            console.log("Razorpay Response:", response);
+            try {
+              // 3. Verify Payment on Backend
+              await axiosPortfolio.post("/payment/verify", {
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+                amount: amount
+              });
+              fetchWallet();
+              setWalletModal(null); setWalletAmount("");
+              alert("Payment Successful! Wallet updated.");
+            } catch (err) {
+              console.error("Verification error:", err);
+              setWalletError(err?.response?.data?.message || "Payment verification failed.");
+            }
+          },
+          prefill: { email: email },
+          theme: { color: T.gold },
+          modal: {
+            ondismiss: function () {
+              setWalletLoading(false);
+            }
+          }
+        };
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      } else {
+        // Withdraw logic - triggers SMTP email in payment-service
+        await axiosPortfolio.post(`/wallet/withdraw?amount=${amount}`);
+        fetchWallet();
+        setWalletModal(null); setWalletAmount("");
+        alert("Withdrawal initiated! Check your email for confirmation.");
+      }
     } catch (e) {
       setWalletError(e?.response?.data?.message || "Transaction failed.");
     } finally { setWalletLoading(false); }
@@ -266,7 +323,7 @@ const ProfilePage = () => {
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = T.border; e.currentTarget.style.color = T.textSub; }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
               </svg>
               Change Password
             </button>
@@ -303,8 +360,8 @@ const ProfilePage = () => {
                   const ph = allHoldings.filter((h) => h.portfolioId === p.id);
                   const curr = ph.reduce((s, h) => s + Number(prices[h.companyId]?.currentPrice || h.averageBuyPrice || 0) * Number(h.quantityHeld || 0), 0);
                   const cost = ph.reduce((s, h) => s + Number(h.averageBuyPrice || 0) * Number(h.quantityHeld || 0), 0);
-                  const pnl  = curr - cost;
-                  const up   = pnl >= 0;
+                  const pnl = curr - cost;
+                  const up = pnl >= 0;
                   return (
                     <div key={p.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: T.surface2, border: `1px solid ${T.border}`, borderRadius: 10, transition: "border-color 0.2s" }}
                       onMouseEnter={(e) => e.currentTarget.style.borderColor = "rgba(245,158,11,0.25)"}

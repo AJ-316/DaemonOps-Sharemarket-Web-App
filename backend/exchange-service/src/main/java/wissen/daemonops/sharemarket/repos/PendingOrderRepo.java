@@ -16,5 +16,7 @@ public interface PendingOrderRepo extends JpaRepository<PendingOrder, Long> {
 
     List<PendingOrder> findByUserIdAndPortfolioIdAndStatus(Long userId, Long portfolioId, String status);
 
+    List<PendingOrder> findByUserIdAndCompanyIdAndStatus(Long userId, Long companyId, String status);
+
     List<PendingOrder> findByCompanyIdAndTypeAndStatus(Long companyId, String type, String status);
 }

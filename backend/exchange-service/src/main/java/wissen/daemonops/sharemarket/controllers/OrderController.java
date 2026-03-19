@@ -18,11 +18,37 @@ import wissen.daemonops.sharemarket.services.OrderService;
 public class OrderController {
 
     private final OrderService orderService;
+    private final wissen.daemonops.sharemarket.services.PendingOrderService pendingOrderService;
 
     @PostMapping
     public ResponseEntity<OrderResponse> placeOrder(
             @RequestBody OrderRequest request,
             @RequestHeader("X-User-Id") Long userId) {
+
+        if ("LIMIT".equalsIgnoreCase(request.getPriceType())) {
+            // Convert OrderRequest to PendingOrderDto
+            wissen.daemonops.sharemarket.dtos.PendingOrderDto dto = new wissen.daemonops.sharemarket.dtos.PendingOrderDto(
+                    request.getCompanyId(),
+                    request.getPortfolioId(),
+                    request.getOrderType() == wissen.daemonops.sharemarket.models.OrderType.BUY ? "LIMIT_BUY"
+                            : "STOP_LOSS",
+                    request.getQuantity(),
+                    request.getLimitPrice());
+            pendingOrderService.create(dto, userId);
+
+            // Return a PENDING response
+            return ResponseEntity.ok(OrderResponse.builder()
+                    .companyId(request.getCompanyId())
+                    .portfolioId(request.getPortfolioId())
+                    .orderType(request.getOrderType())
+                    .quantity(request.getQuantity())
+                    .priceAtOrder(request.getLimitPrice())
+                    .totalValue(request.getLimitPrice().multiply(java.math.BigDecimal.valueOf(request.getQuantity())))
+                    .status(wissen.daemonops.sharemarket.models.OrderStatus.PENDING)
+                    .timestamp(java.time.LocalDateTime.now())
+                    .build());
+        }
+
         return ResponseEntity.ok(orderService.placeOrder(request, userId));
     }
 

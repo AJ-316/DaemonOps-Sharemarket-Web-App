@@ -82,6 +82,10 @@ public class PendingOrderService {
         return pendingOrderRepo.findByUserIdAndPortfolioIdAndStatus(userId, portfolioId, "ACTIVE");
     }
 
+    public List<PendingOrder> getActiveByCompany(Long userId, Long companyId) {
+        return pendingOrderRepo.findByUserIdAndCompanyIdAndStatus(userId, companyId, "ACTIVE");
+    }
+
     @Scheduled(fixedDelay = 1000)
     @Transactional
     public void checkTriggers() {

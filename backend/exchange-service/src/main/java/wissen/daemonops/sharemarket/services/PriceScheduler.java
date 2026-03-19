@@ -16,12 +16,16 @@ public class PriceScheduler {
 
     private final StockPriceRepo stockPriceRepo;
     private final PriceService priceService;
+    private final CandleService candleService;
 
     // Random fluctuation every second
     @Scheduled(fixedDelay = 1000)
     public void fluctuateAllPrices() {
         List<StockPrice> allStocks = stockPriceRepo.findAll();
-        allStocks.forEach(priceService::randomFluctuate);
+        allStocks.forEach(stock -> {
+            priceService.randomFluctuate(stock);
+            candleService.recordTick(stock.getCompanyId(), stock.getCurrentPrice());
+        });
     }
 
     // Reset daily prices at 9:15 AM on weekdays

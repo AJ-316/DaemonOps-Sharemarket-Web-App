@@ -9,6 +9,7 @@ import UserDashboard from "./screens/UserDashboard";
 import AdminDashboard from "./screens/AdminDashboard";
 import PortfolioPage from "./screens/PortfolioPage";
 import ProfilePage from "./screens/ProfilePage";
+import CompanyDetailPage from "./screens/CompanyDetailPage";
 
 const AppRoutes = () => {
   return (
@@ -20,6 +21,7 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
       <Route path="/portfolio" element={<ProtectedRoute><PortfolioPage /></ProtectedRoute>} />
       <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/company/:companyId" element={<ProtectedRoute><CompanyDetailPage /></ProtectedRoute>} />
       <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />

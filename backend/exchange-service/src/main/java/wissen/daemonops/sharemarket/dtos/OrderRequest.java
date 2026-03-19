@@ -9,4 +9,6 @@ public class OrderRequest {
     private Long portfolioId;
     private OrderType orderType;
     private Integer quantity;
+    private String priceType; // "MARKET" or "LIMIT"
+    private java.math.BigDecimal limitPrice;
 }

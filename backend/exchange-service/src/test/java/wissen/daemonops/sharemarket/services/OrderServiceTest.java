@@ -43,7 +43,7 @@ class OrderServiceTest {
     @Mock
     private PriceService priceService;
     @Mock
-    private WalletService walletService;
+    private PaymentServiceClient paymentServiceClient;
 
     @InjectMocks
     private OrderService orderService;
@@ -101,8 +101,7 @@ class OrderServiceTest {
 
         when(priceService.getStockByCompanyId(1L)).thenReturn(beforeTrade, afterTrade);
         when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 4L)).thenReturn(Optional.of(existing));
-        when(walletService.getWallet(userId)).thenReturn(
-                wissen.daemonops.sharemarket.models.Wallet.builder().balance(new BigDecimal("10000.00")).build());
+        when(paymentServiceClient.getBalance(userId)).thenReturn(new BigDecimal("10000.00"));
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userHoldingsRepo.save(any(UserHoldings.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -130,8 +129,7 @@ class OrderServiceTest {
         when(priceService.getStockByCompanyId(1L)).thenReturn(beforeTrade, afterTrade);
         when(userHoldingsRepo.findByUserIdAndCompanyIdAndPortfolioId(userId, 1L, 5L)).thenReturn(Optional.empty());
         when(portfolioRepo.existsById(5L)).thenReturn(true);
-        when(walletService.getWallet(userId)).thenReturn(
-                wissen.daemonops.sharemarket.models.Wallet.builder().balance(new BigDecimal("10000.00")).build());
+        when(paymentServiceClient.getBalance(userId)).thenReturn(new BigDecimal("10000.00"));
         when(orderRepo.save(any(Order.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(userHoldingsRepo.save(any(UserHoldings.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

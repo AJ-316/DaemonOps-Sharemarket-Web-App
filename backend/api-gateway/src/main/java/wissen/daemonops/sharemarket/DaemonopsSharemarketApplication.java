@@ -11,59 +11,64 @@ import org.springframework.context.annotation.Bean;
 @EnableDiscoveryClient
 public class DaemonopsSharemarketApplication {
 
-    private final JwtAuthFilter jwtAuthFilter;
+        private final JwtAuthFilter jwtAuthFilter;
 
-    public DaemonopsSharemarketApplication(JwtAuthFilter jwtAuthFilter) {
-        this.jwtAuthFilter = jwtAuthFilter;
-    }
+        public DaemonopsSharemarketApplication(JwtAuthFilter jwtAuthFilter) {
+                this.jwtAuthFilter = jwtAuthFilter;
+        }
 
-    public static void main(String[] args) {
-        SpringApplication.run(DaemonopsSharemarketApplication.class, args);
-    }
+        public static void main(String[] args) {
+                SpringApplication.run(DaemonopsSharemarketApplication.class, args);
+        }
 
-    @Bean
-    RouteLocator myCustomRouteLocator(RouteLocatorBuilder builder) {
-        return builder.routes()
+        @Bean
+        RouteLocator myCustomRouteLocator(RouteLocatorBuilder builder) {
+                return builder.routes()
 
-                .route("change_password_route", r -> r
-                        .path("/api/auth/change-password")
-                        .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                        .uri("lb://auth-service"))
+                                .route("change_password_route", r -> r
+                                                .path("/api/auth/change-password")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://auth-service"))
 
-            .route("auth_route", r -> r
-                    .path("/api/auth/**")
-                    .uri("lb://auth-service"))
+                                .route("auth_route", r -> r
+                                                .path("/api/auth/**")
+                                                .uri("lb://auth-service"))
 
-            .route("company_route", r -> r
-                    .path("/companies/**")
-                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                    .uri("lb://company-service"))
+                                .route("company_route", r -> r
+                                                .path("/companies/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://company-service"))
 
-            .route("order_route", r -> r
-                    .path("/orders/**")
-                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                    .uri("lb://exchange-service"))
+                                .route("order_route", r -> r
+                                                .path("/orders/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://exchange-service"))
 
-            .route("portfolio_route", r -> r
-                    .path("/portfolio/**")
-                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                    .uri("lb://exchange-service"))
+                                .route("portfolio_route", r -> r
+                                                .path("/portfolio/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://exchange-service"))
 
-            .route("stock_route", r -> r
-                    .path("/stocks/**")
-                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                    .uri("lb://exchange-service"))
+                                .route("stock_route", r -> r
+                                                .path("/stocks/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://exchange-service"))
 
-            .route("pending_orders_route", r -> r
-                    .path("/pending-orders/**")
-                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                    .uri("lb://exchange-service"))
+                                .route("pending_orders_route", r -> r
+                                                .path("/pending-orders/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://exchange-service"))
 
-            .route("wallet_route", r -> r
-                    .path("/wallet/**")
-                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
-                    .uri("lb://exchange-service"))
+                                .route("wallet_route", r -> r
+                                                .path("/wallet/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://payment-service"))
 
-            .build();
-    }
+                                .route("payment_route", r -> r
+                                                .path("/payment/**")
+                                                .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                                                .uri("lb://payment-service"))
+
+                                .build();
+        }
 }

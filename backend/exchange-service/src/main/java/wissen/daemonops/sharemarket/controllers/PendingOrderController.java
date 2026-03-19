@@ -40,9 +40,13 @@ public class PendingOrderController {
     @GetMapping
     public ResponseEntity<List<PendingOrder>> getActive(
             @RequestHeader("X-User-Id") Long userId,
-            @RequestParam(required = false) Long portfolioId) {
+            @RequestParam(required = false) Long portfolioId,
+            @RequestParam(required = false) Long companyId) {
         if (portfolioId != null) {
             return ResponseEntity.ok(pendingOrderService.getActiveByPortfolio(userId, portfolioId));
+        }
+        if (companyId != null) {
+            return ResponseEntity.ok(pendingOrderService.getActiveByCompany(userId, companyId));
         }
         return ResponseEntity.ok(pendingOrderService.getActive(userId));
     }
@@ -56,13 +60,24 @@ public class PendingOrderController {
         return ResponseEntity.ok(notificationRepo.findByUserIdAndReadFalse(userId));
     }
 
-    // Mark all notifications as read
+    // Mark all notifications as read (deletes them so they never reappear)
     @PostMapping("/notifications/read")
     public ResponseEntity<String> markRead(
             @RequestHeader("X-User-Id") Long userId) {
         List<Notification> unread = notificationRepo.findByUserIdAndReadFalse(userId);
-        unread.forEach(n -> n.setRead(true));
-        notificationRepo.saveAll(unread);
-        return ResponseEntity.ok("Marked as read");
+        notificationRepo.deleteAll(unread);
+        return ResponseEntity.ok("Cleared");
+    }
+
+    // Dismiss a single notification
+    @DeleteMapping("/notifications/{id}")
+    public ResponseEntity<String> dismissNotification(
+            @PathVariable Long id,
+            @RequestHeader("X-User-Id") Long userId) {
+        notificationRepo.findById(id).ifPresent(n -> {
+            if (n.getUserId().equals(userId))
+                notificationRepo.delete(n);
+        });
+        return ResponseEntity.ok("Dismissed");
     }
 }

@@ -41,6 +41,12 @@ const Header = () => {
       .catch(() => { });
   };
 
+  const handleDismiss = (id) => {
+    axiosPending.delete(`/pending-orders/notifications/${id}`)
+      .then(() => setNotifications((prev) => prev.filter((n) => n.id !== id)))
+      .catch(() => setNotifications((prev) => prev.filter((n) => n.id !== id)));
+  };
+
   const isActive = (path) => location.pathname === path;
   const unreadCount = notifications.length;
   const username = localStorage.getItem("username") || "U";
@@ -171,23 +177,33 @@ const Header = () => {
                     <div key={n.id} style={{
                       padding: "12px 16px",
                       borderBottom: "1px solid #1E1E1E",
-                      background: n.read ? "transparent" : "rgba(245,158,11,0.04)"
+                      background: "rgba(245,158,11,0.04)",
+                      display: "flex", alignItems: "flex-start", gap: 10,
                     }}>
-                      <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                        <div style={{
-                          width: 28, height: 28, borderRadius: 8, flexShrink: 0,
-                          background: n.message.includes("Stop Loss") ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)",
-                          display: "flex", alignItems: "center", justifyContent: "center"
-                        }}>
-                          <span style={{ fontSize: 14 }}>{n.message.includes("Stop Loss") ? "🔴" : "🟢"}</span>
-                        </div>
-                        <div>
-                          <p style={{ margin: 0, fontSize: 12, color: "#D4D4D4", lineHeight: 1.5 }}>{n.message}</p>
-                          <p style={{ margin: "3px 0 0", fontSize: 10, color: "#525252" }}>
-                            {new Date(n.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
-                          </p>
-                        </div>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+                        background: n.message.includes("Stop Loss") ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)",
+                        display: "flex", alignItems: "center", justifyContent: "center"
+                      }}>
+                        <span style={{ fontSize: 14 }}>{n.message.includes("Stop Loss") ? "🔴" : "🟢"}</span>
                       </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontSize: 12, color: "#D4D4D4", lineHeight: 1.5 }}>{n.message}</p>
+                        <p style={{ margin: "3px 0 0", fontSize: 10, color: "#525252" }}>
+                          {new Date(n.createdAt).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDismiss(n.id)}
+                        title="Dismiss"
+                        style={{
+                          background: "none", border: "none", color: "#525252",
+                          cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "2px 4px",
+                          flexShrink: 0, marginTop: 2,
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#F5F5F5"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#525252"}
+                      >✕</button>
                     </div>
                   ))}
                 </div>

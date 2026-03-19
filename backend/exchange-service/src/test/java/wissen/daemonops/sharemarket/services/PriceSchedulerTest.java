@@ -26,6 +26,9 @@ class PriceSchedulerTest {
     @Mock
     private PriceService priceService;
 
+    @Mock
+    private CandleService candleService;
+
     @InjectMocks
     private PriceScheduler priceScheduler;
 
@@ -60,4 +63,3 @@ class PriceSchedulerTest {
         verify(stockPriceRepo, times(1)).save(stock);
     }
 }
-
