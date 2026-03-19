@@ -49,6 +49,12 @@ public class DaemonopsSharemarketApplication {
                     .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
                     .uri("lb://exchange-service"))
 
+            // ── NEW: pending orders + notifications ──
+            .route("pending_orders_route", r -> r
+                    .path("/pending-orders/**")
+                    .filters(f -> f.filter(jwtAuthFilter.apply(new JwtAuthFilter.Config())))
+                    .uri("lb://exchange-service"))
+
             .build();
     }
 }

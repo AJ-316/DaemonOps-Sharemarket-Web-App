@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axiosPortfolio from "../api/axiosPortfolio";
 import axiosExchange from "../api/axiosExchange";
 import axiosCompany from "../api/axiosCompany";
+import axiosPending from "../api/axiosPending";
 
 const fmt = (n) =>
   Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -56,6 +57,8 @@ function SellModal({ holding, company, prices, portfolios, onClose, onDone }) {
   const [loading, setLoading] = useState(false);
   const [orderResponse, setOrderResponse] = useState(null);
   const [error, setError] = useState("");
+  const [orderMode, setOrderMode] = useState("market"); // "market" | "stoploss"
+  const [stopLossPrice, setStopLossPrice] = useState("");
 
   const ltp = Number(prices[holding.companyId]?.currentPrice || holding.averageBuyPrice || 0);
   const maxQty = Number(holding.quantityHeld || 0);
@@ -66,15 +69,32 @@ function SellModal({ holding, company, prices, portfolios, onClose, onDone }) {
     setLoading(true);
     setError("");
     try {
-      const res = await axiosPortfolio.post("/orders", {
-        companyId: holding.companyId,
-        portfolioId: holding.portfolioId,
-        orderType: "SELL",
-        quantity: Number(quantity),
-      });
-      setOrderResponse(res.data);
-      setStep("receipt");
-      onDone();
+      if (orderMode === "stoploss") {
+        if (!stopLossPrice || isNaN(Number(stopLossPrice)) || Number(stopLossPrice) <= 0) {
+          setError("Enter a valid stop loss price."); setLoading(false); return;
+        }
+        await axiosPending.post("/pending-orders", {
+          companyId: holding.companyId,
+          portfolioId: holding.portfolioId,
+          type: "STOP_LOSS",
+          quantity: Number(quantity),
+          triggerPrice: Number(stopLossPrice),
+        });
+        setOrderResponse({ orderId: "PENDING", status: "STOP_LOSS_SET", orderType: "STOP_LOSS",
+          quantity, priceAtOrder: Number(stopLossPrice), totalValue: Number(stopLossPrice) * quantity });
+        setStep("receipt");
+        onDone();
+      } else {
+        const res = await axiosPortfolio.post("/orders", {
+          companyId: holding.companyId,
+          portfolioId: holding.portfolioId,
+          orderType: "SELL",
+          quantity: Number(quantity),
+        });
+        setOrderResponse(res.data);
+        setStep("receipt");
+        onDone();
+      }
     } catch (e) {
       setError(e?.response?.data?.message || "Order failed.");
     } finally {
@@ -111,6 +131,41 @@ function SellModal({ holding, company, prices, portfolios, onClose, onDone }) {
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{portfolioName}</p>
           </div>
         </div>
+      </div>
+
+      {/* Order Type Toggle */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>Order Type</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: orderMode === "stoploss" ? 12 : 0 }}>
+          {[{ label: "Market Sell", val: "market" }, { label: "Stop Loss", val: "stoploss" }].map(({ label, val }) => (
+            <button key={val} onClick={() => setOrderMode(val)} style={{
+              flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              border: orderMode === val ? "none" : "1px solid #e2e8f0",
+              background: orderMode === val ? (val === "stoploss" ? "#dc2626" : "#dc2626") : "#f8fafc",
+              color: orderMode === val ? "#fff" : "#64748b", transition: "all .15s"
+            }}>{label}</button>
+          ))}
+        </div>
+        {orderMode === "stoploss" && (
+          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: 10, padding: "12px 14px" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#991b1b", fontWeight: 600 }}>
+              🔴 Auto-sell when price drops to or below:
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <span style={{ fontSize: 14, color: "#7f1d1d", fontWeight: 700 }}>₹</span>
+              <input
+                type="number"
+                placeholder={`e.g. ${(ltp * 0.95).toFixed(2)}`}
+                value={stopLossPrice}
+                onChange={(e) => setStopLossPrice(e.target.value)}
+                style={{ flex: 1, border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, outline: "none", background: "#fff" }}
+              />
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 10, color: "#991b1b" }}>
+              Current: ₹{fmt(ltp)} · Order triggers when price ≤ stop loss price
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Quantity */}
@@ -186,15 +241,18 @@ function SellModal({ holding, company, prices, portfolios, onClose, onDone }) {
     </Modal>
   );
 
-  const ok = orderResponse?.status === "EXECUTED" || orderResponse?.status === "COMPLETED";
+  const ok = orderResponse?.status === "EXECUTED" || orderResponse?.status === "COMPLETED" || orderResponse?.status === "STOP_LOSS_SET" || orderResponse?.status === "LIMIT_SET";
   return (
     <Modal onClose={onClose}>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <div style={{ width: 56, height: 56, borderRadius: "50%", margin: "0 auto 12px", background: ok ? "#f0fdf4" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ fontSize: 24, color: ok ? "#10b981" : "#dc2626" }}>{ok ? "✓" : "✕"}</span>
         </div>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0f172a" }}>{ok ? "Sold Successfully!" : "Order Rejected"}</p>
-        {!ok && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>{orderResponse?.rejectionReason}</p>}
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0f172a" }}>{orderResponse?.status === "STOP_LOSS_SET" ? "Stop Loss Set!" : ok ? "Sold Successfully!" : "Order Rejected"}</p>
+        {orderResponse?.status === "STOP_LOSS_SET" && (
+          <p style={{ margin: "6px 0 0", fontSize: 12, color: "#059669" }}>Will auto-sell when price drops to ₹{orderResponse?.priceAtOrder?.toFixed?.(2)}</p>
+        )}
+        {!ok && orderResponse?.status !== "STOP_LOSS_SET" && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>{orderResponse?.rejectionReason}</p>}
       </div>
       <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
         <InfoRow label="Order ID" value={`#${orderResponse?.orderId}`} />
@@ -455,6 +513,7 @@ const PortfolioPage = () => {
   const [priceHistory, setPriceHistory] = useState({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("stocks");
+  const [pendingOrders, setPendingOrders] = useState([]);
   const [orders, setOrders] = useState([]);
   const [search, setSearch] = useState("");
   const [showNewInput, setShowNewInput] = useState(false);
@@ -532,6 +591,18 @@ const PortfolioPage = () => {
     const iv = setInterval(fetchOrders, 5000);
     return () => clearInterval(iv);
   }, [fetchOrders]);
+
+  const fetchPendingOrders = useCallback(() => {
+    axiosPending.get("/pending-orders")
+      .then((res) => setPendingOrders(res.data || []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchPendingOrders();
+    const iv = setInterval(fetchPendingOrders, 3000);
+    return () => clearInterval(iv);
+  }, [fetchPendingOrders]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -716,7 +787,7 @@ const PortfolioPage = () => {
               {/* Tab bar */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderBottom: "1px solid #f8fafc", flexShrink: 0 }}>
                 <div style={{ display: "flex", background: "#f8fafc", borderRadius: 10, padding: 3 }}>
-                  {["stocks", "orders"].map((t) => (
+                  {["stocks", "orders", "pending"].map((t) => (
                     <button key={t} onClick={() => setActiveTab(t)} style={{
                       padding: "6px 16px", borderRadius: 8, fontSize: 12, fontWeight: 600,
                       border: "none", cursor: "pointer", transition: "all .15s", textTransform: "capitalize",
@@ -841,6 +912,81 @@ const PortfolioPage = () => {
                             </td>
                             <td style={{ padding: "10px 16px", color: "#94a3b8", whiteSpace: "nowrap" }}>
                               {o.timestamp ? new Date(o.timestamp).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+
+
+                {activeTab === "pending" && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "#f8fafc", position: "sticky", top: 0, zIndex: 1 }}>
+                        {["Stock", "Type", "Qty", "Trigger Price", "Current Price", "Status", ""].map((col) => (
+                          <th key={col} style={{ textAlign: "left", padding: "10px 16px", fontSize: 10, fontWeight: 700, color: "#94a3b8", letterSpacing: "0.06em", textTransform: "uppercase", borderBottom: "1px solid #f1f5f9", whiteSpace: "nowrap" }}>{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pendingOrders.length === 0 ? (
+                        <tr><td colSpan={7} style={{ textAlign: "center", padding: "60px 16px" }}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "#cbd5e1" }}>
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span style={{ fontSize: 13 }}>No pending orders</span>
+                          </div>
+                        </td></tr>
+                      ) : pendingOrders.map((p) => {
+                        const company = companies[p.companyId];
+                        const ltp = Number(prices[p.companyId]?.currentPrice || 0);
+                        const isStopLoss = p.type === "STOP_LOSS";
+                        const triggerPrice = Number(p.triggerPrice);
+                        const diff = ((ltp - triggerPrice) / triggerPrice * 100);
+                        return (
+                          <tr key={p.id} style={{ borderBottom: "1px solid #f8fafc" }}
+                            onMouseEnter={(e) => e.currentTarget.style.background = "#f8fafc"}
+                            onMouseLeave={(e) => e.currentTarget.style.background = "transparent"}>
+                            <td style={{ padding: "12px 16px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div style={{ width: 30, height: 30, borderRadius: 8, background: isStopLoss ? "#fef2f2" : "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                                  <span style={{ fontSize: 9, fontWeight: 800, color: isStopLoss ? "#dc2626" : "#059669" }}>{(company?.ticker || "?").slice(0, 2)}</span>
+                                </div>
+                                <div>
+                                  <p style={{ margin: 0, fontWeight: 700, fontSize: 12, color: "#0f172a" }}>{company?.ticker || p.companyId}</p>
+                                  <p style={{ margin: 0, fontSize: 10, color: "#94a3b8" }}>{company?.name}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: "12px 16px" }}>
+                              <span style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: isStopLoss ? "#fef2f2" : "#f0fdf4", color: isStopLoss ? "#dc2626" : "#059669" }}>
+                                {isStopLoss ? "🔴 Stop Loss" : "🟢 Limit Buy"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 16px", color: "#475569", fontWeight: 600 }}>{p.quantity}</td>
+                            <td style={{ padding: "12px 16px", fontWeight: 700, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>₹{fmt(triggerPrice)}</td>
+                            <td style={{ padding: "12px 16px", fontVariantNumeric: "tabular-nums" }}>
+                              <span style={{ fontWeight: 700, color: "#0f172a" }}>₹{fmt(ltp)}</span>
+                              <span style={{ marginLeft: 6, fontSize: 10, fontWeight: 600, color: Math.abs(diff) < 5 ? "#f59e0b" : "#94a3b8" }}>
+                                {diff > 0 ? "+" : ""}{diff.toFixed(1)}% from trigger
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 16px" }}>
+                              <span style={{ padding: "3px 8px", borderRadius: 6, fontSize: 10, fontWeight: 700, background: "#fef9c3", color: "#92400e" }}>
+                                ⏳ Waiting
+                              </span>
+                            </td>
+                            <td style={{ padding: "12px 16px" }}>
+                              <button
+                                onClick={() => {
+                                  axiosPending.delete(`/pending-orders/${p.id}`)
+                                    .then(() => fetchPendingOrders())
+                                    .catch(() => {});
+                                }}
+                                style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                Cancel
+                              </button>
                             </td>
                           </tr>
                         );

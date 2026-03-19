@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from "react";
 import axiosCompany from "../api/axiosCompany";
 import axiosExchange from "../api/axiosExchange";
 import axiosPortfolio from "../api/axiosPortfolio";
+import axiosPending from "../api/axiosPending";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt2 = (n) => Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -71,6 +72,8 @@ function BuyModal({ stock, company, onClose }) {
   const [loading, setLoading] = useState(false);
   const [orderResponse, setOrderResponse] = useState(null);
   const [error, setError] = useState("");
+  const [orderMode, setOrderMode] = useState("market"); // "market" | "limit"
+  const [limitPrice, setLimitPrice] = useState("");
 
   const price = Number(stock.currentPrice);
   const total = (price * quantity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -103,11 +106,28 @@ function BuyModal({ stock, company, onClose }) {
     if (!selectedPortfolio) return;
     setLoading(true); setError("");
     try {
-      const res = await axiosPortfolio.post("/orders", {
-        companyId: stock.companyId, portfolioId: selectedPortfolio.id,
-        orderType: "BUY", quantity: Number(quantity),
-      });
-      setOrderResponse(res.data); setStep("receipt");
+      if (orderMode === "limit") {
+        if (!limitPrice || isNaN(Number(limitPrice)) || Number(limitPrice) <= 0) {
+          setError("Enter a valid limit price."); setLoading(false); return;
+        }
+        // Create a pending LIMIT_BUY order
+        await axiosPending.post("/pending-orders", {
+          companyId: stock.companyId,
+          portfolioId: selectedPortfolio.id,
+          type: "LIMIT_BUY",
+          quantity: Number(quantity),
+          triggerPrice: Number(limitPrice),
+        });
+        setOrderResponse({ orderId: "PENDING", status: "LIMIT_SET", orderType: "LIMIT_BUY",
+          quantity, priceAtOrder: Number(limitPrice), totalValue: Number(limitPrice) * quantity });
+        setStep("receipt");
+      } else {
+        const res = await axiosPortfolio.post("/orders", {
+          companyId: stock.companyId, portfolioId: selectedPortfolio.id,
+          orderType: "BUY", quantity: Number(quantity),
+        });
+        setOrderResponse(res.data); setStep("receipt");
+      }
     } catch (e) { setError(e?.response?.data?.message || "Order failed."); }
     finally { setLoading(false); }
   };
@@ -151,6 +171,41 @@ function BuyModal({ stock, company, onClose }) {
             <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#059669", fontVariantNumeric: "tabular-nums" }}>₹{total}</p>
           </div>
         </div>
+      </div>
+
+      {/* Order Type Toggle */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>Order Type</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: orderMode === "limit" ? 12 : 0 }}>
+          {[{ label: "Market Buy", val: "market" }, { label: "Limit Buy", val: "limit" }].map(({ label, val }) => (
+            <button key={val} onClick={() => setOrderMode(val)} style={{
+              flex: 1, padding: "8px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer",
+              border: orderMode === val ? "none" : "1px solid #e2e8f0",
+              background: orderMode === val ? "#10b981" : "#f8fafc",
+              color: orderMode === val ? "#fff" : "#64748b", transition: "all .15s"
+            }}>{label}</button>
+          ))}
+        </div>
+        {orderMode === "limit" && (
+          <div style={{ background: "#fffbeb", border: "1px solid #fde68a", borderRadius: 10, padding: "12px 14px" }}>
+            <p style={{ margin: "0 0 4px", fontSize: 11, color: "#92400e", fontWeight: 600 }}>
+              ⚡ Auto-buy when price reaches or exceeds:
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8 }}>
+              <span style={{ fontSize: 14, color: "#78350f", fontWeight: 700 }}>₹</span>
+              <input
+                type="number"
+                placeholder={`e.g. ${(price * 1.05).toFixed(2)}`}
+                value={limitPrice}
+                onChange={(e) => setLimitPrice(e.target.value)}
+                style={{ flex: 1, border: "1px solid #fde68a", borderRadius: 8, padding: "8px 12px", fontSize: 14, fontWeight: 600, outline: "none", background: "#fff" }}
+              />
+            </div>
+            <p style={{ margin: "6px 0 0", fontSize: 10, color: "#92400e" }}>
+              Current: ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })} · Order triggers when ≥ limit price
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Portfolio selector */}
@@ -236,14 +291,14 @@ function BuyModal({ stock, company, onClose }) {
     </Modal>
   );
 
-  const ok = orderResponse?.status === "EXECUTED" || orderResponse?.status === "COMPLETED";
+  const ok = orderResponse?.status === "EXECUTED" || orderResponse?.status === "COMPLETED" || orderResponse?.status === "LIMIT_SET";
   return (
     <Modal onClose={onClose}>
       <div style={{ textAlign: "center", marginBottom: 20 }}>
         <div style={{ width: 56, height: 56, borderRadius: "50%", margin: "0 auto 12px", background: ok ? "#f0fdf4" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <span style={{ fontSize: 24 }}>{ok ? "✓" : "✕"}</span>
         </div>
-        <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0f172a" }}>{ok ? "Purchase Successful!" : "Order Rejected"}</p>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0f172a" }}>{orderResponse?.status === "LIMIT_SET" ? "Limit Order Set!" : ok ? "Purchase Successful!" : "Order Rejected"}</p>
         {!ok && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>{orderResponse?.rejectionReason}</p>}
       </div>
       <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
