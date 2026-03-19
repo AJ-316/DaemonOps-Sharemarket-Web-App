@@ -14,7 +14,6 @@ const Header = () => {
     setIsLoggedIn(!!localStorage.getItem("token"));
   }, [location]);
 
-  // Poll notifications every 3s
   const fetchNotifications = useCallback(() => {
     if (!localStorage.getItem("token")) return;
     axiosPending.get("/pending-orders/notifications")
@@ -28,7 +27,6 @@ const Header = () => {
     return () => clearInterval(iv);
   }, [fetchNotifications]);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) setShowNotifs(false);
@@ -38,29 +36,20 @@ const Header = () => {
   }, []);
 
   const handleMarkRead = () => {
-    axiosPending.post("/pending-orders/notifications/read").then(() => {
-      setNotifications([]);
-      setShowNotifs(false);
-    }).catch(() => {});
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("userId");
-    localStorage.removeItem("role");
-    setIsLoggedIn(false);
-    navigate("/");
+    axiosPending.post("/pending-orders/notifications/read")
+      .then(() => { setNotifications([]); setShowNotifs(false); })
+      .catch(() => {});
   };
 
   const isActive = (path) => location.pathname === path;
   const unreadCount = notifications.length;
+  const username = localStorage.getItem("username") || "U";
 
   return (
     <header style={{
       position: "sticky", top: 0, zIndex: 100,
       background: "#fff", borderBottom: "1px solid #f1f5f9",
-      height: 56, display: "flex", alignItems: "center",
-      padding: "0 24px", gap: 0
+      height: 56, display: "flex", alignItems: "center", padding: "0 24px"
     }}>
       {/* Logo */}
       <Link to="/" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", marginRight: 32, flexShrink: 0 }}>
@@ -90,8 +79,8 @@ const Header = () => {
         </nav>
       )}
 
-      {/* Right actions */}
-      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
+      {/* Right */}
+      <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
 
         {/* Notification Bell */}
         {isLoggedIn && (
@@ -118,7 +107,6 @@ const Header = () => {
               )}
             </button>
 
-            {/* Dropdown */}
             {showNotifs && (
               <div style={{
                 position: "absolute", top: "calc(100% + 8px)", right: 0,
@@ -136,14 +124,9 @@ const Header = () => {
                 </div>
                 <div style={{ maxHeight: 320, overflowY: "auto" }}>
                   {notifications.length === 0 ? (
-                    <div style={{ padding: "24px 16px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>
-                      No new notifications
-                    </div>
+                    <div style={{ padding: "24px 16px", textAlign: "center", color: "#94a3b8", fontSize: 13 }}>No new notifications</div>
                   ) : notifications.map((n) => (
-                    <div key={n.id} style={{
-                      padding: "12px 16px", borderBottom: "1px solid #f8fafc",
-                      background: n.read ? "#fff" : "#f0fdf4"
-                    }}>
+                    <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid #f8fafc", background: n.read ? "#fff" : "#f0fdf4" }}>
                       <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
                         <div style={{ width: 28, height: 28, borderRadius: 8, background: n.message.includes("Stop Loss") ? "#fef2f2" : "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <span style={{ fontSize: 14 }}>{n.message.includes("Stop Loss") ? "🔴" : "🟢"}</span>
@@ -163,11 +146,18 @@ const Header = () => {
           </div>
         )}
 
+        {/* User avatar / login buttons */}
         {isLoggedIn ? (
-          <button onClick={handleLogout} style={{
-            padding: "7px 16px", borderRadius: 8, border: "1px solid #e2e8f0",
-            background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer"
-          }}>Logout</button>
+          <button onClick={() => navigate("/profile")} style={{
+            width: 36, height: 36, borderRadius: "50%",
+            background: "linear-gradient(135deg, #059669, #10b981)",
+            border: "none", cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 13, fontWeight: 800, color: "#fff",
+            boxShadow: isActive("/profile") ? "0 0 0 2px #10b981, 0 0 0 4px #d1fae5" : "none"
+          }} title="Profile">
+            {username[0]?.toUpperCase() || "U"}
+          </button>
         ) : (
           <>
             <button onClick={() => navigate("/login")} style={{

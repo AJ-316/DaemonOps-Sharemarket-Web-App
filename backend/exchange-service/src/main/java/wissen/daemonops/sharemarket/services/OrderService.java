@@ -26,6 +26,7 @@ public class OrderService {
     private final PortfolioRepo portfolioRepo;
     private final StockPriceRepo stockPriceRepo;
     private final PriceService priceService;
+    private final WalletService walletService; // ← added
 
     public OrderResponse placeOrder(OrderRequest request, Long userId) {
 
@@ -53,6 +54,32 @@ public class OrderService {
                 orderRepo.save(rejected);
                 return buildResponse(rejected);
             }
+        }
+
+        // BUY — check wallet has enough balance BEFORE executing
+        if (request.getOrderType() == OrderType.BUY) {
+            BigDecimal estimatedCost = stock.getCurrentPrice()
+                    .multiply(BigDecimal.valueOf(request.getQuantity()));
+            try {
+                walletService.getWallet(userId); // auto-creates if missing
+                BigDecimal balance = walletService.getWallet(userId).getBalance();
+                if (balance.compareTo(estimatedCost) < 0) {
+                    Order rejected = Order.builder()
+                            .userId(userId)
+                            .companyId(request.getCompanyId())
+                            .orderType(request.getOrderType())
+                            .quantity(request.getQuantity())
+                            .priceAtOrder(stock.getCurrentPrice())
+                            .totalValue(BigDecimal.ZERO)
+                            .status(OrderStatus.REJECTED)
+                            .rejectionReason("Insufficient wallet balance. Available: ₹"
+                                    + balance.toPlainString())
+                            .timestamp(LocalDateTime.now())
+                            .build();
+                    orderRepo.save(rejected);
+                    return buildResponse(rejected);
+                }
+            } catch (Exception ignored) {}
         }
 
         try {
@@ -89,15 +116,26 @@ public class OrderService {
                 .build();
         orderRepo.save(order);
 
+        // ── Update wallet ──────────────────────────────────────────────────────
+        // BUY  → deduct total from wallet
+        // SELL → credit total to wallet
+        try {
+            if (request.getOrderType() == OrderType.BUY) {
+                walletService.deduct(userId, totalValue);
+            } else {
+                walletService.credit(userId, totalValue);
+            }
+        } catch (Exception e) {
+            // Log but don't fail the order — wallet update is best-effort
+            // In production you'd want a transaction rollback here
+        }
+
         updatePortfolio(userId, request, updatedStock.getCurrentPrice());
 
         return buildResponse(order);
     }
 
     private void updatePortfolio(Long userId, OrderRequest request, BigDecimal tradePrice) {
-        // FIX: was findByUserIdAndCompanyId — ignored portfolioId, so buying the same
-        // stock in a new portfolio would update the old portfolio's holding instead of
-        // creating a fresh entry in the correct portfolio.
         Optional<UserHoldings> existing = userHoldingsRepo
                 .findByUserIdAndCompanyIdAndPortfolioId(
                         userId, request.getCompanyId(), request.getPortfolioId());

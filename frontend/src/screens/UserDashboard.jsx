@@ -74,11 +74,15 @@ function BuyModal({ stock, company, onClose }) {
   const [error, setError] = useState("");
   const [orderMode, setOrderMode] = useState("market"); // "market" | "limit"
   const [limitPrice, setLimitPrice] = useState("");
+  const [walletBalance, setWalletBalance] = useState(null);
 
   const price = Number(stock.currentPrice);
-  const total = (price * quantity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const totalNum = price * quantity;
+  const total = totalNum.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const insufficientFunds = orderMode === "market" && walletBalance !== null && totalNum > walletBalance;
 
   useEffect(() => {
+    axiosPortfolio.get("/wallet").then((res) => setWalletBalance(Number(res.data.balance))).catch(() => {});
     axiosPortfolio.get("/portfolio").then((res) => {
       const list = res.data || [];
       setPortfolios(list);
@@ -152,6 +156,14 @@ function BuyModal({ stock, company, onClose }) {
           </p>
           <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>Market Price</p>
         </div>
+      </div>
+
+      {/* Wallet balance */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+        <span style={{ fontSize: 12, color: "#64748b" }}>Wallet Balance</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: walletBalance !== null ? (insufficientFunds ? "#dc2626" : "#059669") : "#94a3b8" }}>
+          {walletBalance !== null ? `₹${walletBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "Loading…"}
+        </span>
       </div>
 
       {/* Quantity */}
@@ -252,11 +264,16 @@ function BuyModal({ stock, company, onClose }) {
 
       {error && <p style={{ color: "#dc2626", fontSize: 12, marginBottom: 12 }}>{error}</p>}
 
-      <button disabled={!selectedPortfolio || loading} onClick={() => setStep("confirm")} style={{
+      {insufficientFunds && (
+        <p style={{ fontSize: 12, color: "#dc2626", marginBottom: 8, textAlign: "center" }}>
+          ⚠ Insufficient wallet balance. Add funds from your profile.
+        </p>
+      )}
+      <button disabled={!selectedPortfolio || loading || insufficientFunds} onClick={() => setStep("confirm")} style={{
         width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
-        background: selectedPortfolio ? "#10b981" : "#d1fae5",
+        background: (!selectedPortfolio || insufficientFunds) ? "#d1fae5" : "#10b981",
         color: "#fff", fontSize: 14, fontWeight: 700,
-        cursor: selectedPortfolio ? "pointer" : "not-allowed", transition: "background .15s"
+        cursor: (!selectedPortfolio || insufficientFunds) ? "not-allowed" : "pointer", transition: "background .15s"
       }}>Review Order →</button>
     </Modal>
   );

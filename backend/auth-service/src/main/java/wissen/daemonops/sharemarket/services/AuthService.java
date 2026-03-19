@@ -57,33 +57,38 @@ public class AuthService {
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
 
-        org.springframework.security.core.userdetails.UserDetails userDetails = 
+        org.springframework.security.core.userdetails.UserDetails userDetails =
                 (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal();
 
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
 
+        // ← added user.getEmail() as 4th field
         return new LoginResponse(
-                jwtService.generateToken(userDetails.getUsername(), user.getUserId(), user.getRole().name()), // ← updated
-                user.getRole().name(), 
-                user.getUserId());
+                jwtService.generateToken(userDetails.getUsername(), user.getUserId(), user.getRole().name()),
+                user.getRole().name(),
+                user.getUserId(),
+                user.getEmail());
+    }
+
+    // ← new method so AuthController /me can look up by userId
+    public User getUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     public String register(RegisterRequestDto dto) {
 
-        // 1. Check duplicate email
         if (userRepository.existsByEmail(dto.email())) {
             throw new IllegalArgumentException("Email already registered");
         }
 
-        // 2. Save User (auth table)
         User user = new User();
         user.setEmail(dto.email());
         user.setPassword(passwordEncoder.encode(dto.password()));
         user.setRole(Role.USER);
         userRepository.save(user);
 
-        // 3. Save UserDetails
         UserDetails userDetails = new UserDetails();
         userDetails.setUser(user);
         userDetails.setFirstName(dto.firstName());
@@ -96,7 +101,6 @@ public class AuthService {
         userDetails.setDob(dto.dob());
         userDetailsRepository.save(userDetails);
 
-        // 4. Save BankDetails
         BankDetails bankDetails = new BankDetails();
         bankDetails.setUserDetails(userDetails);
         bankDetails.setAccountNumber(dto.accountNumber());
@@ -105,7 +109,6 @@ public class AuthService {
         bankDetails.setBranch(dto.branchName());
         bankDetailsRepository.save(bankDetails);
 
-        // 5. Save Nominee
         Nominee nominee = new Nominee();
         nominee.setUserDetails(userDetails);
         nominee.setFirstName(dto.nomineeFirstName());

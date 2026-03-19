@@ -59,6 +59,11 @@ function SellModal({ holding, company, prices, portfolios, onClose, onDone }) {
   const [error, setError] = useState("");
   const [orderMode, setOrderMode] = useState("market"); // "market" | "stoploss"
   const [stopLossPrice, setStopLossPrice] = useState("");
+  const [walletBalance, setWalletBalance] = useState(null);
+
+  useEffect(() => {
+    axiosPortfolio.get("/wallet").then((res) => setWalletBalance(Number(res.data.balance))).catch(() => {});
+  }, []);
 
   const ltp = Number(prices[holding.companyId]?.currentPrice || holding.averageBuyPrice || 0);
   const maxQty = Number(holding.quantityHeld || 0);
@@ -131,6 +136,20 @@ function SellModal({ holding, company, prices, portfolios, onClose, onDone }) {
             <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "#475569", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{portfolioName}</p>
           </div>
         </div>
+      </div>
+
+      {/* Wallet balance */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f8fafc", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+        <span style={{ fontSize: 12, color: "#64748b" }}>Wallet Balance</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>
+          {walletBalance !== null ? `₹${walletBalance.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : "Loading…"}
+        </span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "#f0fdf4", borderRadius: 10, padding: "8px 14px", marginBottom: 16 }}>
+        <span style={{ fontSize: 12, color: "#64748b" }}>You'll receive (approx)</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>
+          +₹{(ltp * quantity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+        </span>
       </div>
 
       {/* Order Type Toggle */}
@@ -981,7 +1000,7 @@ const PortfolioPage = () => {
                               <button
                                 onClick={() => {
                                   axiosPending.delete(`/pending-orders/${p.id}`)
-                                    .then(() => fetchPendingOrders())
+                                    .then(() => { fetchPendingOrders(); fetchOrders(); })
                                     .catch(() => {});
                                 }}
                                 style={{ padding: "5px 12px", borderRadius: 6, border: "1px solid #fecaca", background: "#fff", color: "#dc2626", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>

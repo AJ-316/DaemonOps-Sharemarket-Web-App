@@ -8,6 +8,7 @@ import AdminRoute from "./AdminRoutes";
 import UserDashboard from "./screens/UserDashboard";
 import AdminDashboard from "./screens/AdminDashboard";
 import PortfolioPage from "./screens/PortfolioPage";
+import ProfilePage from "./screens/ProfilePage";
 
 const AppRoutes = () => {
   return (
@@ -16,32 +17,10 @@ const AppRoutes = () => {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      <Route
-        path="/dashboard"
-        element={
-          <ProtectedRoute>
-            <UserDashboard />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/portfolio"
-        element={
-          <ProtectedRoute>
-            <PortfolioPage />
-          </ProtectedRoute>
-        }
-      />
-
-      <Route
-        path="/admin"
-        element={
-          <AdminRoute>
-            <AdminDashboard />
-          </AdminRoute>
-        }
-      />
+      <Route path="/dashboard" element={<ProtectedRoute><UserDashboard /></ProtectedRoute>} />
+      <Route path="/portfolio" element={<ProtectedRoute><PortfolioPage /></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+      <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
