@@ -28,4 +28,14 @@ public class PortfolioService {
     public List<Portfolio> getUserPortfolio(Long userId) {
         return portfolioRepo.findAllByUserId(userId);
     }
+
+    public void deletePortfolio(Long portfolioId, Long userId) {
+    Portfolio p = portfolioRepo.findById(portfolioId)
+            .orElseThrow(() -> new IllegalArgumentException("Portfolio not found: " + portfolioId));
+    if (!p.getUserId().equals(userId)) {
+        throw new IllegalArgumentException("Not your portfolio");
+    }
+    portfolioRepo.deleteById(portfolioId);
+}
+ 
 }

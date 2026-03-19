@@ -1,520 +1,562 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axiosCompany from "../api/axiosCompany";
 import axiosExchange from "../api/axiosExchange";
-import axiosPortfolio from "../api/axiosPortfolio"; // you'll need this axios instance
+import axiosPortfolio from "../api/axiosPortfolio";
 
-// ── Mini Modal Shell ──────────────────────────────────────────────────────────
-function Modal({ onClose, children }) {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt2 = (n) => Number(n).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+// ── Modal Shell ───────────────────────────────────────────────────────────────
+function Modal({ onClose, children, width = 440 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 relative animate-fade-in">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-xl leading-none"
-        >
-          ✕
-        </button>
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200,
+      display: "flex", alignItems: "center", justifyContent: "center",
+      background: "rgba(15,23,42,0.5)", backdropFilter: "blur(4px)"
+    }} onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div style={{
+        background: "#fff", borderRadius: 20, width: "100%", maxWidth: width,
+        margin: "0 16px", padding: 28, position: "relative",
+        boxShadow: "0 24px 60px rgba(0,0,0,0.18)", maxHeight: "90vh", overflowY: "auto"
+      }}>
+        <button onClick={onClose} style={{
+          position: "absolute", top: 16, right: 16, width: 28, height: 28,
+          borderRadius: "50%", border: "none", background: "#f1f5f9",
+          color: "#64748b", cursor: "pointer", fontSize: 14, fontWeight: 700,
+          display: "flex", alignItems: "center", justifyContent: "center"
+        }}>✕</button>
         {children}
       </div>
     </div>
   );
 }
 
-// ── BuySell Modal ─────────────────────────────────────────────────────────────
-function BuySellModal({ stock, company, onClose }) {
-  const [mode, setMode] = useState("BUY"); // "BUY" | "SELL"
-  const [step, setStep] = useState("portfolio"); // "portfolio" | "confirm" | "receipt"
+function InfoRow({ label, value, bold, color }) {
+  return (
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <span style={{ color: "#94a3b8", fontSize: 13 }}>{label}</span>
+      <span style={{ fontWeight: bold ? 700 : 500, fontSize: bold ? 15 : 13, color: color || "#0f172a" }}>{value}</span>
+    </div>
+  );
+}
+
+// ── Mini Sparkline ────────────────────────────────────────────────────────────
+function Sparkline({ data, up }) {
+  if (!data || data.length < 2) return (
+    <svg width="80" height="28" viewBox="0 0 80 28">
+      <line x1="0" y1="14" x2="80" y2="14" stroke="#e2e8f0" strokeWidth="1.5" strokeDasharray="3 3"/>
+    </svg>
+  );
+  const min = Math.min(...data), max = Math.max(...data), range = max - min || 1;
+  const W = 80, H = 28;
+  const pts = data.map((v, i) =>
+    `${((i / (data.length - 1)) * W).toFixed(1)},${(H - ((v - min) / range) * (H - 4) - 2).toFixed(1)}`
+  ).join(" ");
+  const color = up ? "#10b981" : "#ef4444";
+  return (
+    <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="1.8" strokeLinejoin="round" strokeLinecap="round"/>
+    </svg>
+  );
+}
+
+// ── Buy Modal ─────────────────────────────────────────────────────────────────
+function BuyModal({ stock, company, onClose }) {
+  const [step, setStep] = useState("form");
   const [portfolios, setPortfolios] = useState([]);
   const [selectedPortfolio, setSelectedPortfolio] = useState(null);
   const [quantity, setQuantity] = useState(1);
-  const [newPortfolioName, setNewPortfolioName] = useState("");
-  const [showNewPortfolioInput, setShowNewPortfolioInput] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [showNewInput, setShowNewInput] = useState(false);
   const [loading, setLoading] = useState(false);
   const [orderResponse, setOrderResponse] = useState(null);
   const [error, setError] = useState("");
 
   const price = Number(stock.currentPrice);
-  const total = (price * quantity).toLocaleString("en-IN", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
+  const total = (price * quantity).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  // Fetch portfolios on open
   useEffect(() => {
-    axiosPortfolio
-      .get("/portfolio")
-      .then((res) => setPortfolios(res.data || []))
-      .catch(() => setPortfolios([]));
+    axiosPortfolio.get("/portfolio").then((res) => {
+      const list = res.data || [];
+      setPortfolios(list);
+      if (list.length === 1) setSelectedPortfolio(list[0]);
+    }).catch(() => {});
   }, []);
 
   const handleCreatePortfolio = async () => {
-    if (!newPortfolioName.trim()) return;
+    if (!newName.trim()) return;
     setLoading(true);
-    setError("");
-    const nameToCreate = newPortfolioName.trim(); // capture before clearing
+    const name = newName.trim();
     try {
-      await axiosPortfolio.post("/portfolio", { name: nameToCreate });
-      // Refresh portfolio list
+      await axiosPortfolio.post("/portfolio", { name });
       const updated = await axiosPortfolio.get("/portfolio");
       const list = updated.data || [];
       setPortfolios(list);
-      setNewPortfolioName("");
-      setShowNewPortfolioInput(false);
-      // Select the newly created portfolio
-      const created = list.find((p) => p.name === nameToCreate);
+      setNewName(""); setShowNewInput(false);
+      const created = list.find((p) => p.name === name);
       if (created) setSelectedPortfolio(created);
-    } catch (e) {
-      const msg =
-        e?.response?.data?.message ||
-        e?.response?.data ||
-        e?.message ||
-        "Failed to create portfolio. Check that the portfolio service is running and X-User-Id is set.";
-      setError(typeof msg === "string" ? msg : JSON.stringify(msg));
-    } finally {
-      setLoading(false);
-    }
+    } catch { setError("Failed to create portfolio."); }
+    finally { setLoading(false); }
   };
 
-  const handlePlaceOrder = async () => {
+  const handleBuy = async () => {
     if (!selectedPortfolio) return;
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
       const res = await axiosPortfolio.post("/orders", {
-        companyId: stock.companyId,
-        portfolioId: selectedPortfolio.id,
-        orderType: mode,
-        quantity: Number(quantity),
+        companyId: stock.companyId, portfolioId: selectedPortfolio.id,
+        orderType: "BUY", quantity: Number(quantity),
       });
-      setOrderResponse(res.data);
-      setStep("receipt");
-    } catch (e) {
-      setError(e?.response?.data?.message || "Order failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
+      setOrderResponse(res.data); setStep("receipt");
+    } catch (e) { setError(e?.response?.data?.message || "Order failed."); }
+    finally { setLoading(false); }
   };
 
-  // ── STEP: Portfolio Selection ──
-  if (step === "portfolio") {
-    return (
-      <Modal onClose={onClose}>
-        {/* Mode Toggle */}
-        <div className="flex gap-2 mb-5">
-          {["BUY", "SELL"].map((m) => (
-            <button
-              key={m}
-              onClick={() => setMode(m)}
-              className={`flex-1 py-2 rounded-xl text-sm font-semibold transition ${
-                mode === m
-                  ? m === "BUY"
-                    ? "bg-emerald-600 text-white shadow"
-                    : "bg-red-500 text-white shadow"
-                  : "bg-gray-100 text-gray-500"
-              }`}
-            >
-              {m}
+  if (step === "form") return (
+    <Modal onClose={onClose}>
+      {/* Stock header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+        <div style={{ width: 44, height: 44, borderRadius: 12, background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#059669" }}>{(company?.ticker || "?").slice(0, 2)}</span>
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <p style={{ margin: 0, fontWeight: 800, fontSize: 16, color: "#0f172a" }}>{company?.name}</p>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#059669", background: "#f0fdf4", padding: "2px 7px", borderRadius: 5 }}>{company?.ticker}</span>
+          </div>
+          <p style={{ margin: "2px 0 0", fontSize: 13, color: "#64748b" }}>NSE · Equity</p>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <p style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+            ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+          </p>
+          <p style={{ margin: 0, fontSize: 11, color: "#64748b" }}>Market Price</p>
+        </div>
+      </div>
+
+      {/* Quantity */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>Quantity</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a", fontSize: 20, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+          <input type="number" min={1} value={quantity}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+            style={{ width: 72, textAlign: "center", border: "1px solid #e2e8f0", borderRadius: 10, padding: "8px 0", fontSize: 16, fontWeight: 700, color: "#0f172a", outline: "none" }}
+          />
+          <button onClick={() => setQuantity((q) => q + 1)}
+            style={{ width: 36, height: 36, borderRadius: 10, border: "1px solid #e2e8f0", background: "#f8fafc", color: "#0f172a", fontSize: 20, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+          <div style={{ marginLeft: "auto", textAlign: "right" }}>
+            <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>Total</p>
+            <p style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "#059669", fontVariantNumeric: "tabular-nums" }}>₹{total}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Portfolio selector */}
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 8px" }}>Add to Portfolio</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: 160, overflowY: "auto" }}>
+          {portfolios.length === 0 && !showNewInput && (
+            <p style={{ fontSize: 12, color: "#94a3b8", fontStyle: "italic", margin: 0 }}>No portfolios yet — create one below.</p>
+          )}
+          {portfolios.map((p) => (
+            <button key={p.id} onClick={() => setSelectedPortfolio(p)} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "10px 14px", borderRadius: 10, cursor: "pointer",
+              border: selectedPortfolio?.id === p.id ? "1.5px solid #10b981" : "1px solid #f1f5f9",
+              background: selectedPortfolio?.id === p.id ? "#f0fdf4" : "#f8fafc",
+              transition: "all .15s"
+            }}>
+              <span style={{ fontSize: 13, fontWeight: 600, color: selectedPortfolio?.id === p.id ? "#059669" : "#475569" }}>{p.name}</span>
+              {selectedPortfolio?.id === p.id && <span style={{ color: "#10b981", fontSize: 15 }}>✓</span>}
             </button>
           ))}
         </div>
-
-        <h2 className="text-lg font-bold text-gray-900 mb-1">
-          {company?.name || "Stock"}
-          <span className="ml-2 text-xs font-mono bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded">
-            {company?.ticker}
-          </span>
-        </h2>
-        <p className="text-gray-500 text-sm mb-5">
-          Current Price:{" "}
-          <span className="font-semibold text-gray-900">
-            ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-          </span>
-        </p>
-
-        {/* Quantity */}
-        <div className="mb-5">
-          <label className="block text-xs text-gray-500 font-medium mb-1">Quantity</label>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-              className="w-9 h-9 rounded-lg bg-gray-100 text-gray-700 font-bold text-lg hover:bg-gray-200"
-            >
-              −
-            </button>
-            <input
-              type="number"
-              min={1}
-              value={quantity}
-              onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-              className="w-20 text-center border border-gray-200 rounded-lg py-2 text-sm font-semibold focus:outline-none focus:border-emerald-400"
+        {showNewInput ? (
+          <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+            <input autoFocus type="text" placeholder="Portfolio name…" value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleCreatePortfolio()}
+              style={{ flex: 1, border: "1px solid #d1fae5", borderRadius: 8, padding: "7px 12px", fontSize: 13, outline: "none" }}
             />
-            <button
-              onClick={() => setQuantity((q) => q + 1)}
-              className="w-9 h-9 rounded-lg bg-gray-100 text-gray-700 font-bold text-lg hover:bg-gray-200"
-            >
-              +
+            <button onClick={handleCreatePortfolio} disabled={loading}
+              style={{ padding: "7px 14px", background: "#10b981", color: "#fff", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              {loading ? "…" : "Save"}
             </button>
-            <span className="text-sm text-gray-500 ml-auto">
-              ≈ <span className="font-semibold text-gray-900">₹{total}</span>
-            </span>
+            <button onClick={() => setShowNewInput(false)}
+              style={{ padding: "7px 10px", background: "#f1f5f9", border: "none", borderRadius: 8, fontSize: 12, color: "#64748b", cursor: "pointer" }}>✕</button>
           </div>
-        </div>
-
-        {/* Portfolio Selection */}
-        <div className="mb-4">
-          <label className="block text-xs text-gray-500 font-medium mb-2">
-            {mode === "BUY" ? "Add to Portfolio" : "Sell from Portfolio"}
-          </label>
-          <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-            {portfolios.length === 0 && !showNewPortfolioInput && (
-              <p className="text-xs text-gray-400 italic">No portfolios yet.</p>
-            )}
-            {portfolios.map((p) => (
-              <button
-                key={p.id}
-                onClick={() => setSelectedPortfolio(p)}
-                className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition ${
-                  selectedPortfolio?.id === p.id
-                    ? "border-emerald-500 bg-emerald-50 text-emerald-800 font-semibold"
-                    : "border-gray-100 bg-gray-50 text-gray-700 hover:border-gray-300"
-                }`}
-              >
-                {p.name}
-              </button>
-            ))}
-          </div>
-
-          {/* New Portfolio */}
-          {showNewPortfolioInput ? (
-            <div className="flex gap-2 mt-2">
-              <input
-                autoFocus
-                type="text"
-                placeholder="Portfolio name..."
-                value={newPortfolioName}
-                onChange={(e) => setNewPortfolioName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleCreatePortfolio()}
-                className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-400"
-              />
-              <button
-                onClick={handleCreatePortfolio}
-                disabled={loading}
-                className="px-3 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 disabled:opacity-50"
-              >
-                Save
-              </button>
-              <button
-                onClick={() => setShowNewPortfolioInput(false)}
-                className="px-3 py-2 bg-gray-100 text-gray-600 text-sm rounded-lg"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowNewPortfolioInput(true)}
-              className="mt-2 text-xs text-emerald-600 hover:underline font-medium"
-            >
-              + Create new portfolio
-            </button>
-          )}
-        </div>
-
-        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-
-        <button
-          disabled={!selectedPortfolio || loading}
-          onClick={() => setStep("confirm")}
-          className={`w-full py-3 rounded-xl text-sm font-semibold transition ${
-            mode === "BUY"
-              ? "bg-emerald-600 hover:bg-emerald-700 text-white disabled:bg-emerald-200"
-              : "bg-red-500 hover:bg-red-600 text-white disabled:bg-red-200"
-          } disabled:cursor-not-allowed`}
-        >
-          Continue to {mode === "BUY" ? "Buy" : "Sell"}
-        </button>
-      </Modal>
-    );
-  }
-
-  // ── STEP: Confirm ──
-  if (step === "confirm") {
-    return (
-      <Modal onClose={onClose}>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">
-          Confirm {mode === "BUY" ? "Purchase" : "Sale"}
-        </h2>
-        <p className="text-xs text-gray-400 mb-5">Review your order before placing</p>
-
-        <div className="bg-gray-50 rounded-xl p-4 space-y-3 mb-5 text-sm">
-          <Row label="Stock" value={`${company?.name} (${company?.ticker})`} />
-          <Row label="Order Type" value={mode} />
-          <Row label="Portfolio" value={selectedPortfolio?.name} />
-          <Row label="Quantity" value={quantity} />
-          <Row label="Price per Share" value={`₹${price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
-          <div className="border-t border-gray-200 pt-3">
-            <Row
-              label="Total Amount"
-              value={`₹${total}`}
-              bold
-              color={mode === "BUY" ? "text-emerald-700" : "text-red-600"}
-            />
-          </div>
-        </div>
-
-        {error && <p className="text-xs text-red-500 mb-3">{error}</p>}
-
-        <div className="flex gap-3">
-          <button
-            onClick={() => setStep("portfolio")}
-            className="flex-1 py-3 rounded-xl text-sm font-medium border border-gray-200 text-gray-600 hover:bg-gray-50"
-          >
-            ← Back
+        ) : (
+          <button onClick={() => setShowNewInput(true)}
+            style={{ marginTop: 8, background: "none", border: "none", color: "#10b981", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+            + Create new portfolio
           </button>
-          <button
-            onClick={handlePlaceOrder}
-            disabled={loading}
-            className={`flex-1 py-3 rounded-xl text-sm font-semibold text-white transition disabled:opacity-50 ${
-              mode === "BUY" ? "bg-emerald-600 hover:bg-emerald-700" : "bg-red-500 hover:bg-red-600"
-            }`}
-          >
-            {loading ? "Placing..." : `Confirm ${mode === "BUY" ? "Buy" : "Sell"}`}
-          </button>
-        </div>
-      </Modal>
-    );
-  }
+        )}
+      </div>
 
-  // ── STEP: Receipt ──
-  if (step === "receipt") {
-    const isSuccess = orderResponse?.status === "EXECUTED" || orderResponse?.status === "COMPLETED";
-    return (
-      <Modal onClose={onClose}>
-        <div className="text-center mb-5">
-          <div
-            className={`w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3 ${
-              isSuccess ? "bg-emerald-100" : "bg-red-100"
-            }`}
-          >
-            <span className="text-2xl">{isSuccess ? "✓" : "✕"}</span>
-          </div>
-          <h2 className="text-lg font-bold text-gray-900">
-            {isSuccess ? "Order Placed!" : "Order Rejected"}
-          </h2>
-          {!isSuccess && orderResponse?.rejectionReason && (
-            <p className="text-xs text-red-500 mt-1">{orderResponse.rejectionReason}</p>
-          )}
-        </div>
+      {error && <p style={{ color: "#dc2626", fontSize: 12, marginBottom: 12 }}>{error}</p>}
 
-        <div className="bg-gray-50 rounded-xl p-4 space-y-3 text-sm mb-5">
-          <Row label="Order ID" value={`#${orderResponse?.orderId}`} />
-          <Row label="Stock" value={`${company?.name} (${company?.ticker})`} />
-          <Row label="Type" value={orderResponse?.orderType} />
-          <Row label="Quantity" value={orderResponse?.quantity} />
-          <Row
-            label="Price per Share"
-            value={`₹${Number(orderResponse?.priceAtOrder).toLocaleString("en-IN", {
-              minimumFractionDigits: 2,
-            })}`}
-          />
-          <div className="border-t border-gray-200 pt-3">
-            <Row
-              label="Total Value"
-              value={`₹${Number(orderResponse?.totalValue).toLocaleString("en-IN", {
-                minimumFractionDigits: 2,
-              })}`}
-              bold
-              color={mode === "BUY" ? "text-emerald-700" : "text-red-600"}
-            />
-          </div>
-          <Row
-            label="Status"
-            value={orderResponse?.status}
-            color={isSuccess ? "text-emerald-600" : "text-red-500"}
-          />
-        </div>
+      <button disabled={!selectedPortfolio || loading} onClick={() => setStep("confirm")} style={{
+        width: "100%", padding: "13px 0", borderRadius: 12, border: "none",
+        background: selectedPortfolio ? "#10b981" : "#d1fae5",
+        color: "#fff", fontSize: 14, fontWeight: 700,
+        cursor: selectedPortfolio ? "pointer" : "not-allowed", transition: "background .15s"
+      }}>Review Order →</button>
+    </Modal>
+  );
 
-        <button
-          onClick={onClose}
-          className="w-full py-3 rounded-xl text-sm font-semibold bg-gray-900 text-white hover:bg-gray-800"
-        >
-          Done
+  if (step === "confirm") return (
+    <Modal onClose={onClose}>
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ width: 52, height: 52, borderRadius: 14, background: "#f0fdf4", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 10px" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="2.5">
+            <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-2 7h12M10 20a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm7 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+          </svg>
+        </div>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0f172a" }}>Confirm Purchase</p>
+        <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8" }}>Review your order</p>
+      </div>
+      <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+        <InfoRow label="Stock" value={`${company?.name} (${company?.ticker})`} />
+        <InfoRow label="Portfolio" value={selectedPortfolio?.name} />
+        <InfoRow label="Quantity" value={quantity} />
+        <InfoRow label="Price per share" value={`₹${price.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`} />
+        <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+          <InfoRow label="Total Amount" value={`₹${total}`} bold color="#059669" />
+        </div>
+      </div>
+      {error && <p style={{ color: "#dc2626", fontSize: 12, marginBottom: 12 }}>{error}</p>}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setStep("form")} style={{ flex: 1, padding: "12px 0", borderRadius: 12, border: "1px solid #e2e8f0", background: "#fff", color: "#475569", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>← Back</button>
+        <button onClick={handleBuy} disabled={loading} style={{ flex: 2, padding: "12px 0", borderRadius: 12, border: "none", background: "#10b981", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer", opacity: loading ? 0.7 : 1 }}>
+          {loading ? "Placing…" : "Confirm Buy"}
         </button>
-      </Modal>
-    );
-  }
+      </div>
+    </Modal>
+  );
 
-  return null;
-}
-
-function Row({ label, value, bold, color }) {
+  const ok = orderResponse?.status === "EXECUTED" || orderResponse?.status === "COMPLETED";
   return (
-    <div className="flex justify-between items-center">
-      <span className="text-gray-500">{label}</span>
-      <span className={`${bold ? "font-bold text-base" : "font-medium"} ${color || "text-gray-900"}`}>
-        {value}
-      </span>
-    </div>
+    <Modal onClose={onClose}>
+      <div style={{ textAlign: "center", marginBottom: 20 }}>
+        <div style={{ width: 56, height: 56, borderRadius: "50%", margin: "0 auto 12px", background: ok ? "#f0fdf4" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span style={{ fontSize: 24 }}>{ok ? "✓" : "✕"}</span>
+        </div>
+        <p style={{ margin: 0, fontWeight: 800, fontSize: 17, color: "#0f172a" }}>{ok ? "Purchase Successful!" : "Order Rejected"}</p>
+        {!ok && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#dc2626" }}>{orderResponse?.rejectionReason}</p>}
+      </div>
+      <div style={{ background: "#f8fafc", borderRadius: 12, padding: 16, display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+        <InfoRow label="Order ID" value={`#${orderResponse?.orderId}`} />
+        <InfoRow label="Stock" value={`${company?.name} (${company?.ticker})`} />
+        <InfoRow label="Quantity" value={orderResponse?.quantity} />
+        <InfoRow label="Price per share" value={`₹${fmt2(orderResponse?.priceAtOrder)}`} />
+        <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 10 }}>
+          <InfoRow label="Total Value" value={`₹${fmt2(orderResponse?.totalValue)}`} bold color="#059669" />
+        </div>
+      </div>
+      <button onClick={onClose} style={{ width: "100%", padding: "12px 0", borderRadius: 12, border: "none", background: "#0f172a", color: "#fff", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>Done</button>
+    </Modal>
   );
 }
 
-// ── Main Dashboard ─────────────────────────────────────────────────────────────
+// ── Main Dashboard ────────────────────────────────────────────────────────────
 const UserDashboard = () => {
   const [stocks, setStocks] = useState([]);
   const [companies, setCompanies] = useState({});
+  const [priceHistory, setPriceHistory] = useState({});
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [search, setSearch] = useState("");
-  const [activeModal, setActiveModal] = useState(null); // { stock, company }
+  const [buyModal, setBuyModal] = useState(null);
+
+  // Filters
+  const [filterSearch, setFilterSearch] = useState("");
+  const [sortBy, setSortBy] = useState("name"); // "name" | "price_asc" | "price_desc" | "change_asc" | "change_desc"
+  const [priceRange, setPriceRange] = useState([0, 0]); // [min, max]
+  const [priceRangeMax, setPriceRangeMax] = useState(100000);
+  const [priceFilter, setPriceFilter] = useState([0, 100000]);
+
 
   useEffect(() => {
     axiosCompany.get("/companies").then((res) => {
       const map = {};
       res.data.forEach((c) => { map[c.id] = c; });
       setCompanies(map);
-    });
+    }).catch(() => {});
   }, []);
 
   const fetchPrices = useCallback(() => {
-    axiosExchange
-      .get("/stocks")
+    axiosExchange.get("/stocks")
       .then((res) => {
         const sorted = res.data.sort((a, b) => a.companyId - b.companyId);
         setStocks(sorted);
         setLastUpdate(new Date().toLocaleTimeString());
         setLoading(false);
+        // Update price history
+        setPriceHistory((prev) => {
+          const next = { ...prev };
+          sorted.forEach((s) => {
+            const hist = prev[s.companyId] || [];
+            next[s.companyId] = [...hist, Number(s.currentPrice)].slice(-30);
+          });
+          return next;
+        });
+        // Set price range bounds on first load
+        if (sorted.length > 0) {
+          const max = Math.max(...sorted.map((s) => Number(s.currentPrice)));
+          const maxRounded = Math.ceil(max / 1000) * 1000;
+          setPriceRangeMax(maxRounded);
+          setPriceFilter((prev) => prev[1] === 100000 ? [0, maxRounded] : prev);
+        }
       })
-      .catch(() => {}); // silent — 401 means exchange service requires auth header
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
     fetchPrices();
-    const interval = setInterval(fetchPrices, 1000);
-    return () => clearInterval(interval);
+    const iv = setInterval(fetchPrices, 1000);
+    return () => clearInterval(iv);
   }, [fetchPrices]);
 
   const getPct = (current, open) => {
-    if (!open) return "0.00";
-    return (((current - open) / open) * 100).toFixed(2);
+    if (!open || open === 0) return 0;
+    return ((current - open) / open) * 100;
   };
 
-  const filtered = stocks.filter((s) => {
-    const c = companies[s.companyId];
-    if (!c) return true;
-    return (
-      c.name.toLowerCase().includes(search.toLowerCase()) ||
-      c.ticker.toLowerCase().includes(search.toLowerCase())
-    );
-  });
+  // Apply filters + sort
+  const filtered = stocks
+    .filter((s) => {
+      const c = companies[s.companyId];
+      const price = Number(s.currentPrice);
+      const pct = getPct(price, s.openPriceToday);
+
+      if (filterSearch) {
+        const q = filterSearch.toLowerCase();
+        if (!c?.name?.toLowerCase().includes(q) && !c?.ticker?.toLowerCase().includes(q)) return false;
+      }
+      if (price < priceFilter[0] || price > priceFilter[1]) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      const ca = companies[a.companyId], cb = companies[b.companyId];
+      if (sortBy === "name") return (ca?.name || "").localeCompare(cb?.name || "");
+      if (sortBy === "price_asc") return Number(a.currentPrice) - Number(b.currentPrice);
+      if (sortBy === "price_desc") return Number(b.currentPrice) - Number(a.currentPrice);
+      if (sortBy === "change_asc") return getPct(a.currentPrice, a.openPriceToday) - getPct(b.currentPrice, b.openPriceToday);
+      if (sortBy === "change_desc") return getPct(b.currentPrice, b.openPriceToday) - getPct(a.currentPrice, a.openPriceToday);
+      return 0;
+    });
+
 
   return (
-    <div className="p-6 max-w-screen-xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Live Markets</h1>
-          {lastUpdate && (
-            <p className="text-xs text-gray-400 mt-1 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              Updated {lastUpdate}
-            </p>
-          )}
+    <div style={{ display: "flex", minHeight: "calc(100vh - 56px)", background: "#f8fafc" }}>
+      <style>{`
+        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        input[type=range]{accent-color:#10b981}
+        .stock-row:hover{background:#f0fdf4 !important}
+        .buy-btn:hover{background:#059669 !important;color:#fff !important}
+      `}</style>
+
+      {/* ══ FILTERS SIDEBAR ══ */}
+      <aside style={{
+        width: 220, flexShrink: 0, background: "#fff",
+        borderRight: "1px solid #f1f5f9", padding: "20px 16px",
+        position: "sticky", top: 56, height: "calc(100vh - 56px)", overflowY: "auto"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+          <span style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", letterSpacing: "0.04em", textTransform: "uppercase" }}>Filters</span>
+          <button onClick={() => { setFilterSearch(""); setPriceFilter([0, priceRangeMax]); setSortBy("name"); }}
+            style={{ background: "none", border: "1px solid #10b981", borderRadius: 6, padding: "3px 10px", fontSize: 11, fontWeight: 700, color: "#10b981", cursor: "pointer" }}>
+            Clear All
+          </button>
         </div>
-        <input
-          type="text"
-          placeholder="Search..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="px-4 py-2 rounded-lg border border-gray-200 text-sm focus:border-emerald-500 outline-none w-56"
-        />
-      </div>
 
-      {loading ? (
-        <div className="text-center py-20 text-gray-400">Loading prices...</div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-100">
-              <tr>
-                {["Ticker", "Company", "Price", "Open", "High", "Low", "Change", "Actions"].map((h) => (
-                  <th
-                    key={h}
-                    className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wider"
-                  >
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {filtered.map((s) => {
-                const company = companies[s.companyId];
-                const pct = getPct(s.currentPrice, s.openPriceToday);
-                const isUp = parseFloat(pct) >= 0;
-
-                return (
-                  <tr key={s.id} className="hover:bg-gray-50 transition">
-                    <td className="px-4 py-3">
-                      <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded text-xs">
-                        {company?.ticker || s.companyId}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-gray-900">
-                      {company?.name || "—"}
-                    </td>
-                    <td className="px-4 py-3 font-semibold font-mono text-gray-900">
-                      ₹{Number(s.currentPrice).toLocaleString("en-IN", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 font-mono">
-                      ₹{Number(s.openPriceToday).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-emerald-600 font-mono">
-                      ₹{Number(s.highToday).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3 text-red-500 font-mono">
-                      ₹{Number(s.lowToday).toFixed(2)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-full ${
-                          isUp ? "bg-emerald-50 text-emerald-700" : "bg-red-50 text-red-600"
-                        }`}
-                      >
-                        {isUp ? "▲" : "▼"} {Math.abs(pct)}%
-                      </span>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setActiveModal({ stock: s, company, defaultMode: "BUY" })}
-                          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition"
-                        >
-                          Buy
-                        </button>
-                        <button
-                          onClick={() => setActiveModal({ stock: s, company, defaultMode: "SELL" })}
-                          className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition"
-                        >
-                          Sell
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        {/* Sort — square pills */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 10px" }}>Sort By</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {[
+              { label: "Name", val: "name" },
+              { label: "Price ↑", val: "price_asc" },
+              { label: "Price ↓", val: "price_desc" },
+              { label: "Top Gainers", val: "change_desc" },
+              { label: "Top Losers", val: "change_asc" },
+            ].map(({ label, val }) => (
+              <button key={val} onClick={() => setSortBy(val)} style={{
+                padding: "5px 12px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                border: sortBy === val ? "1.5px solid #10b981" : "1px solid #e2e8f0",
+                background: sortBy === val ? "#10b981" : "#fff",
+                color: sortBy === val ? "#fff" : "#64748b",
+                cursor: "pointer", transition: "all .15s"
+              }}>{label}</button>
+            ))}
+          </div>
         </div>
-      )}
 
-      {activeModal && (
-        <BuySellModal
-          stock={activeModal.stock}
-          company={activeModal.company}
-          onClose={() => setActiveModal(null)}
-        />
+        <div style={{ height: 1, background: "#f1f5f9", margin: "0 0 20px" }}/>
+
+        {/* Price — square pill buckets, no slider */}
+        <div style={{ marginBottom: 20 }}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", margin: "0 0 10px" }}>Market Price</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {[
+              { label: "All", min: 0, max: Infinity },
+              { label: "Under ₹500", min: 0, max: 500 },
+              { label: "₹500–₹2K", min: 500, max: 2000 },
+              { label: "₹2K–₹10K", min: 2000, max: 10000 },
+              { label: "Over ₹10K", min: 10000, max: Infinity },
+            ].map(({ label, min, max }) => {
+              const isActive = priceFilter[0] === min && priceFilter[1] === (max === Infinity ? priceRangeMax : max);
+              return (
+                <button key={label}
+                  onClick={() => setPriceFilter([min, max === Infinity ? priceRangeMax : max])}
+                  style={{
+                    padding: "5px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    border: isActive ? "1.5px solid #10b981" : "1px solid #e2e8f0",
+                    background: isActive ? "#10b981" : "#fff",
+                    color: isActive ? "#fff" : "#64748b",
+                    cursor: "pointer", transition: "all .15s"
+                  }}>{label}</button>
+              );
+            })}
+          </div>
+        </div>
+
+      </aside>
+
+            {/* ══ MAIN CONTENT ══ */}
+      <main style={{ flex: 1, padding: "24px 32px", overflow: "auto" }}>
+
+        {/* Header row */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#0f172a" }}>Explore Stocks</h1>
+            {lastUpdate && (
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: "#94a3b8", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#10b981", display: "inline-block", animation: "pulse 2s infinite" }}/>
+                <strong style={{ color: "#0f172a" }}>{filtered.length} Stocks</strong>&nbsp;· Updated {lastUpdate}
+              </p>
+            )}
+          </div>
+          {/* Inline search for table */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: 10, padding: "7px 14px", width: 240 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" placeholder="Filter table…" value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              style={{ border: "none", background: "none", outline: "none", fontSize: 13, color: "#0f172a", width: "100%" }}
+            />
+          </div>
+        </div>
+
+
+        {loading ? (
+          <div style={{ textAlign: "center", padding: "80px 0", color: "#94a3b8", fontSize: 14 }}>Loading market data…</div>
+        ) : (
+          <div style={{ background: "#fff", borderRadius: 16, border: "1px solid #f1f5f9", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "#f8fafc", borderBottom: "1px solid #f1f5f9" }}>
+                  {[
+                    { label: "Company", sortKey: "name" },
+                    { label: "Chart", sortKey: null },
+                    { label: "Market Price", sortKey: "price_desc" },
+                    { label: "Open", sortKey: null },
+                    { label: "High", sortKey: null },
+                    { label: "Low", sortKey: null },
+                    { label: "Change", sortKey: "change_desc" },
+                    { label: "", sortKey: null },
+                  ].map(({ label, sortKey }) => (
+                    <th key={label} style={{
+                      textAlign: "left", padding: "12px 16px",
+                      fontSize: 11, fontWeight: 700, color: "#94a3b8",
+                      letterSpacing: "0.06em", textTransform: "uppercase",
+                      whiteSpace: "nowrap",
+                      cursor: sortKey ? "pointer" : "default"
+                    }} onClick={() => sortKey && setSortBy(sortBy === sortKey ? "name" : sortKey)}>
+                      {label} {sortKey && (sortBy === sortKey ? " ↓" : "")}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.length === 0 ? (
+                  <tr><td colSpan={8} style={{ textAlign: "center", padding: "60px 0", color: "#94a3b8", fontSize: 14 }}>
+                    No stocks match your filters
+                  </td></tr>
+                ) : filtered.map((s) => {
+                  const company = companies[s.companyId];
+                  const price = Number(s.currentPrice);
+                  const pct = getPct(price, s.openPriceToday);
+                  const isUp = pct >= 0;
+                  const hist = priceHistory[s.companyId] || [];
+                  return (
+                    <tr key={s.id} className="stock-row" style={{ borderBottom: "1px solid #f8fafc", transition: "background .1s", cursor: "default" }}>
+                      {/* Company */}
+                      <td style={{ padding: "14px 16px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          <div style={{ width: 38, height: 38, borderRadius: 10, background: isUp ? "#f0fdf4" : "#fef2f2", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <span style={{ fontSize: 10, fontWeight: 800, color: isUp ? "#059669" : "#dc2626" }}>
+                              {(company?.ticker || "?").slice(0, 2)}
+                            </span>
+                          </div>
+                          <div>
+                            <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#0f172a" }}>{company?.name || "—"}</p>
+                            <p style={{ margin: 0, fontSize: 11, color: "#94a3b8" }}>{company?.ticker} · NSE</p>
+                          </div>
+                        </div>
+                      </td>
+                      {/* Sparkline */}
+                      <td style={{ padding: "14px 16px" }}>
+                        <Sparkline data={hist} up={isUp}/>
+                      </td>
+                      {/* Price */}
+                      <td style={{ padding: "14px 16px" }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: 14, color: "#0f172a", fontVariantNumeric: "tabular-nums" }}>
+                          ₹{price.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </td>
+                      {/* Open */}
+                      <td style={{ padding: "14px 16px", color: "#64748b", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                        ₹{Number(s.openPriceToday).toFixed(2)}
+                      </td>
+                      {/* High */}
+                      <td style={{ padding: "14px 16px", color: "#059669", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                        ₹{Number(s.highToday).toFixed(2)}
+                      </td>
+                      {/* Low */}
+                      <td style={{ padding: "14px 16px", color: "#dc2626", fontSize: 13, fontVariantNumeric: "tabular-nums" }}>
+                        ₹{Number(s.lowToday).toFixed(2)}
+                      </td>
+                      {/* Change */}
+                      <td style={{ padding: "14px 16px" }}>
+                        <span style={{
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          padding: "4px 10px", borderRadius: 99, fontSize: 12, fontWeight: 700,
+                          background: isUp ? "#f0fdf4" : "#fef2f2",
+                          color: isUp ? "#059669" : "#dc2626"
+                        }}>
+                          {isUp ? "▲" : "▼"} {Math.abs(pct).toFixed(2)}%
+                        </span>
+                      </td>
+                      {/* Buy button */}
+                      <td style={{ padding: "14px 16px" }}>
+                        <button className="buy-btn" onClick={() => setBuyModal({ stock: s, company })} style={{
+                          padding: "7px 20px", borderRadius: 8, border: "1.5px solid #10b981",
+                          background: "#fff", color: "#10b981",
+                          fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all .15s"
+                        }}>Buy</button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </main>
+
+      {buyModal && (
+        <BuyModal stock={buyModal.stock} company={buyModal.company} onClose={() => setBuyModal(null)}/>
       )}
     </div>
   );

@@ -37,4 +37,14 @@ public class UserHoldingsController {
             @RequestHeader("X-User-Id") Long userId) {
         return ResponseEntity.ok(portfolioService.createPortfolio(portfolioDto, userId));
     }
+
+     
+    @DeleteMapping("/{portfolioId}")
+    public ResponseEntity<String> deletePortfolio(
+            @PathVariable Long portfolioId,
+            @RequestHeader("X-User-Id") Long userId) {
+        portfolioService.deletePortfolio(portfolioId, userId);
+        return ResponseEntity.ok("Portfolio deleted");
+    }
+ 
 }
